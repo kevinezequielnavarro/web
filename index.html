@@ -367,9 +367,9 @@
     <!-- RESERVAS -->
     <div id="page-reservas" class="page">
       <div class="row mb-3">
-        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-gold"><div class="kpi-lbl">Confirmadas</div><div class="kpi-val" id="res-cnt">0</div></div></div>
-        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-green"><div class="kpi-lbl">Total reservado</div><div class="kpi-val" id="res-tot">$0</div></div></div>
-        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-blue"><div class="kpi-lbl">Senas cobradas</div><div class="kpi-val" id="res-senia">$0</div></div></div>
+        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-blue"><div class="kpi-lbl">⚽ Fig. reservadas</div><div class="kpi-val" id="res-fig">0</div></div></div>
+        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-blue"><div class="kpi-lbl">📒 Alb. reservados</div><div class="kpi-val" id="res-alb">0</div></div></div>
+        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-green"><div class="kpi-lbl">💰 Total reservado ($)</div><div class="kpi-val" id="res-tot">$0</div></div></div>
       </div>
       <div id="reservas-tabs" class="mb-3"></div>
       <div id="reservas-stock-info" class="mb-3"></div>
@@ -1055,9 +1055,11 @@ function renderReservas(){
   renderReservasStockInfo();
   const base = reservas.filter(r => r.compra === activeReservaCompra);
   const conf = base.filter(r=>r.estado==='Confirmada');
-  $('#res-cnt').text(conf.length);
+  const figConf = conf.filter(r=>r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
+  const albConf = conf.filter(r=>r.producto==='Album').reduce((s,r)=>s+r.cantidad,0);
+  $('#res-fig').text(fmtN(figConf));
+  $('#res-alb').text(fmtN(albConf));
   $('#res-tot').text(fmt(conf.reduce((s,r)=>s+r.total,0)));
-  $('#res-senia').text(fmt(conf.reduce((s,r)=>s+(r.sena||0),0)));
 
   // Thead dinámico
   $('#reservas-head').html('<tr>'+RCOLS.map(c=>`<th class="sortable ${c.cls}${reservasSortCol===c.key?' sort-'+(reservasSortDir===1?'asc':'desc'):''}" data-col="${c.key}">${c.label}${sortIcon(c.key,reservasSortCol,reservasSortDir)}</th>`).join('')+'<th></th></tr>');
@@ -1531,6 +1533,7 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
+
 
 
 
