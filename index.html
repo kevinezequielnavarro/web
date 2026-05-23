@@ -147,6 +147,10 @@
     .row-vendida { opacity:0.52; }
     .row-vendida td { text-decoration:line-through; color:var(--muted) !important; }
     .bdg-vendida { background:rgba(127,127,127,.15); color:#888; }
+    .row-cancelada { opacity:0.42; }
+    .row-cancelada td { text-decoration:line-through; color:var(--muted) !important; }
+    .row-pendiente { opacity:0.78; }
+    .row-pendiente td { font-style:italic; }
     .precio-editable { cursor:pointer; border-bottom:1px dashed var(--muted); }
     .precio-editable:hover { color:var(--accent); border-bottom-color:var(--accent); }
     .stock-info-strip { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
@@ -363,7 +367,7 @@
     <!-- RESERVAS -->
     <div id="page-reservas" class="page">
       <div class="row mb-3">
-        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-gold"><div class="kpi-lbl">Reservas activas</div><div class="kpi-val" id="res-cnt">0</div></div></div>
+        <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-gold"><div class="kpi-lbl">Confirmadas</div><div class="kpi-val" id="res-cnt">0</div></div></div>
         <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-green"><div class="kpi-lbl">Total reservado</div><div class="kpi-val" id="res-tot">$0</div></div></div>
         <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-blue"><div class="kpi-lbl">Senas cobradas</div><div class="kpi-val" id="res-senia">$0</div></div></div>
       </div>
@@ -695,14 +699,14 @@ function ventasActivas(){ return ventas.filter(v=>!COMPRAS.find(c=>c.id===v.comp
 function stockFig(cid){
   const c=COMPRAS.find(x=>x.id===cid);
   const v=ventasByC(cid).filter(x=>x.producto==='Figurita').reduce((s,x)=>s+x.cantidad,0);
-  const r=reservas.filter(x=>x.producto==='Figurita').reduce((s,x)=>s+x.cantidad,0);
+  const r=reservas.filter(x=>x.compra===cid&&x.producto==='Figurita'&&x.estado==='Confirmada').reduce((s,x)=>s+x.cantidad,0);
   return {compradas:c.figCompradas,vendidas:v,reservadas:r,disponibles:c.figCompradas-v};
 }
 
 function stockAlb(cid){
   const c=COMPRAS.find(x=>x.id===cid);
   const v=ventasByC(cid).filter(x=>x.producto==='Album').reduce((s,x)=>s+x.cantidad,0);
-  const r=reservas.filter(x=>x.producto==='Album').reduce((s,x)=>s+x.cantidad,0);
+  const r=reservas.filter(x=>x.compra===cid&&x.producto==='Album'&&x.estado==='Confirmada').reduce((s,x)=>s+x.cantidad,0);
   return {comprados:c.albComprados,vendidos:v,reservados:r,disponibles:c.albComprados-v};
 }
 
@@ -807,9 +811,10 @@ function renderDashboard(){
   const totRec  = vAct.reduce((s,v)=>s+v.total,0);
   const totCosto= COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
   const ganancia= totRec-totCosto;
-  const figRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
-  const albRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Album').reduce((s,r)=>s+r.cantidad,0);
+  const figRes  = reservas.filter(r=>r.estado==='Confirmada'&&r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
+  const albRes  = reservas.filter(r=>r.estado==='Confirmada'&&r.producto==='Album').reduce((s,r)=>s+r.cantidad,0);
   const conf    = reservas.filter(r=>r.estado==='Confirmada').length;
+  const pend    = reservas.filter(r=>r.estado==='Pendiente').length;
 
   const kpis=[
     {l:`Fig. vendidas (${cp?cp.nombre:'—'})`, v:fmtN(figVP), s:`de ${fmtN(cp?cp.figCompradas:0)} compradas`, cls:'a-blue',  ico:'fa-image'},
@@ -830,7 +835,7 @@ function renderDashboard(){
     <div class="col-6 col-sm kpi-col mb-3">
       <div class="kpi-card a-gold">
         <i class="fas fa-bookmark kpi-ico"></i>
-        <div class="kpi-lbl" style="margin-bottom:8px">Reservas</div>
+        <div class="kpi-lbl" style="margin-bottom:8px">Reservas confirmadas</div>
         <div class="d-flex justify-content-between align-items-baseline mb-1">
           <span style="font-size:.72rem;color:var(--muted)">Figuritas</span>
           <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem">${fmtN(figRes)}</span>
@@ -839,9 +844,13 @@ function renderDashboard(){
           <span style="font-size:.72rem;color:var(--muted)">Álbumes</span>
           <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem">${fmtN(albRes)}</span>
         </div>
-        <div class="d-flex justify-content-between align-items-baseline">
+        <div class="d-flex justify-content-between align-items-baseline mb-1">
           <span style="font-size:.72rem;color:var(--muted)">Confirmadas</span>
           <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem;color:var(--success)">${conf}</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-baseline">
+          <span style="font-size:.72rem;color:var(--muted)">Pendientes</span>
+          <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem;color:var(--accent)">${pend}</span>
         </div>
       </div>
     </div>`);
@@ -1045,10 +1054,10 @@ const RNUM=new Set(['cantidad','precio','total','sena']);
 function renderReservas(){
   renderReservasStockInfo();
   const base = reservas.filter(r => r.compra === activeReservaCompra);
-  const act = base.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida');
-  $('#res-cnt').text(act.length);
-  $('#res-tot').text(fmt(act.reduce((s,r)=>s+r.total,0)));
-  $('#res-senia').text(fmt(act.reduce((s,r)=>s+(r.sena||0),0)));
+  const conf = base.filter(r=>r.estado==='Confirmada');
+  $('#res-cnt').text(conf.length);
+  $('#res-tot').text(fmt(conf.reduce((s,r)=>s+r.total,0)));
+  $('#res-senia').text(fmt(conf.reduce((s,r)=>s+(r.sena||0),0)));
 
   // Thead dinámico
   $('#reservas-head').html('<tr>'+RCOLS.map(c=>`<th class="sortable ${c.cls}${reservasSortCol===c.key?' sort-'+(reservasSortDir===1?'asc':'desc'):''}" data-col="${c.key}">${c.label}${sortIcon(c.key,reservasSortCol,reservasSortDir)}</th>`).join('')+'<th></th></tr>');
@@ -1060,7 +1069,7 @@ function renderReservas(){
   filtradas=applySort(filtradas,reservasSortCol,reservasSortDir,RNUM);
 
   $('#reservas-body').html(filtradas.length
-    ? filtradas.map(r=>`<tr class="${r.estado==='Vendida'?'row-vendida':''}">
+    ? filtradas.map(r=>`<tr class="${r.estado==='Vendida'?'row-vendida':r.estado==='Cancelada'?'row-cancelada':r.estado==='Pendiente'?'row-pendiente':''}">
         <td>${r.fecha}</td><td class="hide-mobile">${r.vendedor}</td><td class="hide-mobile">${bdgProd(r.producto)}</td>
         <td>${r.comprador}</td>
         <td class="text-right">${fmtN(r.cantidad)}</td>
