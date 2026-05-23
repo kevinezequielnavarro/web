@@ -143,19 +143,93 @@
     .text-ac { color:var(--accent); }
     .precio-val { font-family:'Bebas Neue',cursive; font-size:1.05rem; color:var(--accent); }
 
+    .row-vendida { opacity:0.52; }
+    .row-vendida td { text-decoration:line-through; color:var(--muted) !important; }
+    .bdg-vendida { background:rgba(127,127,127,.15); color:#888; }
+    .precio-editable { cursor:pointer; border-bottom:1px dashed var(--muted); }
+    .precio-editable:hover { color:var(--accent); border-bottom-color:var(--accent); }
+    .switch-principal-wrap { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .switch-principal-wrap label { font-size:.75rem; color:var(--muted); margin:0; cursor:pointer; }
+
     ::-webkit-scrollbar { width:5px; height:5px; }
     ::-webkit-scrollbar-track { background:var(--bg-dark); }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 
-    @media (max-width:768px) {
-      #sidebar { transform:translateX(-240px); }
+    /* --- MOBILE BOTTOM NAV --- */
+    #mobile-nav {
+      display:none; position:fixed; bottom:0; left:0; right:0;
+      height:62px; background:var(--bg-sidebar); border-top:1px solid var(--border);
+      z-index:300; flex-direction:row; align-items:center; justify-content:space-around;
+      -webkit-overflow-scrolling:touch; padding:0 4px;
+    }
+    .mob-nav-item {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:3px; padding:6px 10px; color:var(--muted); cursor:pointer; flex:1;
+      font-size:0.56rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;
+      transition:color .15s; -webkit-tap-highlight-color:transparent; border-top:3px solid transparent;
+    }
+    .mob-nav-item i { font-size:1.05rem; }
+    .mob-nav-item.active { color:var(--accent); border-top-color:var(--accent); }
+
+    /* --- HAMBURGER --- */
+    #btn-menu { display:none; background:none; border:none; color:var(--text); font-size:1.1rem; padding:6px 10px; cursor:pointer; }
+
+    /* Sidebar overlay en mobile */
+    #sidebar-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:99;
+    }
+    #sidebar-overlay.show { display:block; }
+
+    @media (max-width:767px) {
+      /* Sidebar: oculto por defecto, slide-in al abrir */
+      #sidebar { display:flex !important; transform:translateX(-260px); transition:transform .25s; z-index:100; }
       #sidebar.open { transform:translateX(0); }
       #main { margin-left:0; }
-      .content { padding:14px; }
+
+      /* Topbar mobile */
+      .topbar { padding:10px 14px; }
+      .topbar h2 { font-size:1.05rem; }
+      #btn-menu { display:inline-block; }
+      #topbar-right { display:none; }
+
+      /* Contenido */
+      .content { padding:12px 12px 76px; }
+
+      /* Nav inferior visible */
+      #mobile-nav { display:flex; }
+
+      /* KPI cards: 2 por fila en mobile */
+      #kpi-row .kpi-col { flex:0 0 50%; max-width:50%; }
+
+      /* Modales: más cómodos en mobile */
+      .modal-dialog { margin:8px; }
+      .modal-content { border-radius:10px; }
+
+      /* Tablas: fuente más chica */
+      .app-tbl { font-size:0.78rem; }
+      .app-tbl thead th { font-size:0.62rem; padding:7px 8px; }
+      .app-tbl tbody td { padding:7px 8px; }
+
+      /* Tarjetas de primos: full width */
+      .primo-card { padding:14px; }
+
+      /* Tbl-head con botones: columna en mobile */
+      .tbl-head { flex-wrap:wrap; gap:8px; }
+
+      /* Ocultar columnas menos críticas en tablas de ventas/reservas en mobile */
+      .hide-mobile { display:none; }
+
+      /* Topbar right: botones de acción visibles dentro del contenido */
+    }
+
+    @media (min-width:768px) {
+      #mobile-nav { display:none !important; }
     }
   </style>
 </head>
 <body>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <!-- ===== SIDEBAR ===== -->
 <div id="sidebar">
@@ -179,7 +253,10 @@
 <!-- ===== MAIN ===== -->
 <div id="main">
   <div class="topbar">
-    <h2 id="page-title">Dashboard</h2>
+    <div class="d-flex align-items-center gap-2">
+      <button id="btn-menu"><i class="fas fa-bars"></i></button>
+      <h2 id="page-title">Dashboard</h2>
+    </div>
     <div id="topbar-right"></div>
   </div>
   <div class="content">
@@ -239,7 +316,7 @@
         </div>
         <div class="tbl-scroll">
           <table class="app-tbl">
-            <thead><tr><th>Fecha</th><th>Vendedor</th><th>Producto</th><th>Comprador</th><th class="text-right">Cantidad</th><th class="text-right">Precio unit.</th><th class="text-right">Total</th><th>Obs.</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th class="hide-mobile">Vendedor</th><th>Producto</th><th>Comprador</th><th class="text-right">Cant.</th><th class="text-right hide-mobile">Precio unit.</th><th class="text-right">Total</th><th class="hide-mobile">Obs.</th><th></th></tr></thead>
             <tbody id="ventas-body"></tbody>
             <tfoot>
               <tr class="totals-row">
@@ -269,7 +346,7 @@
         </div>
         <div class="tbl-scroll">
           <table class="app-tbl">
-            <thead><tr><th>Fecha</th><th>Vendedor</th><th>Producto</th><th>Comprador</th><th class="text-right">Cant.</th><th class="text-right">Precio</th><th class="text-right">Total</th><th class="text-right">Sena</th><th>Estado</th><th>Obs.</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th class="hide-mobile">Vendedor</th><th class="hide-mobile">Producto</th><th>Comprador</th><th class="text-right">Cant.</th><th class="text-right hide-mobile">Precio</th><th class="text-right">Total</th><th class="text-right hide-mobile">Sena</th><th>Estado</th><th class="hide-mobile">Obs.</th><th></th></tr></thead>
             <tbody id="reservas-body"></tbody>
           </table>
         </div>
@@ -278,6 +355,10 @@
 
     <!-- STOCK -->
     <div id="page-stock" class="page">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="sec-title mb-0" style="border:none"><i class="fas fa-boxes mr-2"></i>Compras registradas</span>
+        <button class="btn btn-gold btn-sm" id="btn-add-compra"><i class="fas fa-plus mr-1"></i>Nueva compra</button>
+      </div>
       <div class="row" id="stock-row"></div>
     </div>
 
@@ -294,7 +375,7 @@
           <div class="tbl-wrap">
             <div class="tbl-scroll">
               <table class="app-tbl">
-                <thead><tr><th>Cantidad minima</th><th>Precio unit.</th><th>x50 unidades</th><th>x100 unidades</th></tr></thead>
+                <thead><tr><th>Cantidad minima</th><th>Precio unit.</th><th>x50 unidades</th><th>x100 unidades</th><th></th></tr></thead>
                 <tbody id="prec-fig-body"></tbody>
               </table>
             </div>
@@ -305,7 +386,7 @@
           <div class="tbl-wrap">
             <div class="tbl-scroll">
               <table class="app-tbl">
-                <thead><tr><th>Cantidad minima</th><th>Precio unit.</th><th>x5 unidades</th><th>x10 unidades</th></tr></thead>
+                <thead><tr><th>Cantidad minima</th><th>Precio unit.</th><th>x5 unidades</th><th>x10 unidades</th><th></th></tr></thead>
                 <tbody id="prec-alb-body"></tbody>
               </table>
             </div>
@@ -316,6 +397,16 @@
 
   </div><!-- /content -->
 </div><!-- /main -->
+
+<!-- ===== MOBILE BOTTOM NAV ===== -->
+<nav id="mobile-nav">
+  <div class="mob-nav-item active" data-page="dashboard"><i class="fas fa-th-large"></i><span>Inicio</span></div>
+  <div class="mob-nav-item" data-page="ventas"><i class="fas fa-shopping-cart"></i><span>Ventas</span></div>
+  <div class="mob-nav-item" data-page="reservas"><i class="fas fa-bookmark"></i><span>Reservas</span></div>
+  <div class="mob-nav-item" data-page="stock"><i class="fas fa-boxes"></i><span>Stock</span></div>
+  <div class="mob-nav-item" data-page="primos"><i class="fas fa-users"></i><span>Primos</span></div>
+  <div class="mob-nav-item" data-page="precios"><i class="fas fa-tags"></i><span>Precios</span></div>
+</nav>
 
 <!-- ===== MODAL VENTA ===== -->
 <div class="modal fade" id="modalVenta" tabindex="-1">
@@ -337,7 +428,7 @@
             <select class="form-control" id="v-producto"><option>Figurita</option><option>Album</option></select>
           </div>
           <div class="form-group col-6"><label>Compra</label>
-            <select class="form-control" id="v-compra"><option value="C1">Compra 1</option><option value="C2">Compra 2</option></select>
+            <select class="form-control" id="v-compra"></select>
           </div>
         </div>
         <div class="form-group"><label>Comprador</label><input type="text" class="form-control" id="v-comprador" placeholder="Nombre"></div>
@@ -376,7 +467,7 @@
             <select class="form-control" id="r-producto"><option>Figurita</option><option>Album</option></select>
           </div>
           <div class="form-group col-6"><label>Estado</label>
-            <select class="form-control" id="r-estado"><option>Confirmada</option><option>Pendiente</option><option>Cancelada</option></select>
+            <select class="form-control" id="r-estado"><option>Confirmada</option><option>Pendiente</option><option>Cancelada</option><option>Vendida</option></select>
           </div>
         </div>
         <div class="form-group"><label>Comprador</label><input type="text" class="form-control" id="r-comprador" placeholder="Nombre"></div>
@@ -391,6 +482,35 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-out" data-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-gold" id="btn-sv-reserva"><i class="fas fa-check mr-1"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL COMPRA ===== -->
+<div class="modal fade" id="modalCompra" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva Compra</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label>Nombre de la compra</label><input type="text" class="form-control" id="c-nombre" placeholder="Ej: Compra 3"></div>
+        <div class="sec-title" style="font-size:.68rem;margin-top:12px"><i class="fas fa-image mr-1"></i>Figuritas</div>
+        <div class="form-row">
+          <div class="form-group col-6"><label>Cantidad comprada</label><input type="number" class="form-control" id="c-fig-cant" min="0" value="0"></div>
+          <div class="form-group col-6"><label>Costo por figurita ($)</label><input type="number" class="form-control" id="c-fig-costo" min="0" value="0"></div>
+        </div>
+        <div class="sec-title" style="font-size:.68rem;margin-top:4px"><i class="fas fa-book mr-1"></i>Albums</div>
+        <div class="form-row">
+          <div class="form-group col-6"><label>Cantidad comprada</label><input type="number" class="form-control" id="c-alb-cant" min="0" value="0"></div>
+          <div class="form-group col-6"><label>Costo por album ($)</label><input type="number" class="form-control" id="c-alb-costo" min="0" value="0"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-out" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-gold" id="btn-sv-compra"><i class="fas fa-check mr-1"></i>Guardar</button>
       </div>
     </div>
   </div>
@@ -449,6 +569,7 @@ let reservas = [];
 
 let activeCompra = 'C1';
 let editVId = null, editRId = null;
+let precioManual = false, precioManualR = false;
 
 // =============================================================
 // HELPERS
@@ -462,8 +583,8 @@ const bdgProd  = p => p==='Album'
   : '<span class="bdg bdg-figurita">Figurita</span>';
 
 const bdgEst   = e => {
-  const cls = e==='Confirmada'?'bdg-confirmada':e==='Pendiente'?'bdg-pendiente':'bdg-cancelada';
-  return `<span class="bdg ${cls}">${e}</span>`;
+  const m={Confirmada:'bdg-confirmada',Pendiente:'bdg-pendiente',Cancelada:'bdg-cancelada',Vendida:'bdg-vendida'};
+  return `<span class="bdg ${m[e]||'bdg-pendiente'}">${e}</span>`;
 };
 
 const bdgComp  = c => c.estado==='Cerrada'
@@ -488,6 +609,15 @@ function stockAlb(cid){
 
 function pct(v,t){ return t?Math.min(100,Math.max(0,Math.round(v/t*100))):0; }
 
+function compraPrincipal(){ return COMPRAS.find(c=>c.esPrincipal) || COMPRAS[COMPRAS.length-1]; }
+
+function getPrecioSugerido(cantidad, producto){
+  const tabla = producto==='Figurita' ? PRECIOS_FIG : PRECIOS_ALB;
+  const sorted = [...tabla].sort((a,b)=>b.cantidad-a.cantidad);
+  const match  = sorted.find(t=>cantidad>=t.cantidad);
+  return match ? match.precio : (tabla[0]?.precio||0);
+}
+
 // =============================================================
 // CARGA DE DATOS DESDE SUPABASE
 // =============================================================
@@ -511,6 +641,7 @@ async function loadData() {
       id: c.id, nombre: c.nombre,
       figCompradas: c.fig_compradas, albComprados: c.alb_comprados,
       costoFig: c.costo_fig, costoAlb: c.costo_alb, estado: c.estado,
+      esPrincipal: c.es_principal || false,
       inversiones: Object.fromEntries(
         (inv || []).filter(i => i.compra_id === c.id).map(i => [i.primo, i.monto])
       )
@@ -521,8 +652,8 @@ async function loadData() {
     PRIMO_COLORS = Object.fromEntries(prim.map(p => [p.nombre, { bg: p.color_bg, fg: p.color_fg }]));
   }
   if (prec && prec.length) {
-    PRECIOS_FIG = prec.filter(p => p.tipo === 'figurita').map(p => ({ cantidad: p.cantidad_min, precio: p.precio }));
-    PRECIOS_ALB = prec.filter(p => p.tipo === 'album').map(p => ({ cantidad: p.cantidad_min, precio: p.precio }));
+    PRECIOS_FIG = prec.filter(p => p.tipo === 'figurita').map(p => ({ id: p.id, cantidad: p.cantidad_min, precio: p.precio }));
+    PRECIOS_ALB = prec.filter(p => p.tipo === 'album').map(p => ({ id: p.id, cantidad: p.cantidad_min, precio: p.precio }));
   }
 }
 
@@ -530,35 +661,54 @@ async function loadData() {
 // DASHBOARD
 // =============================================================
 function renderDashboard(){
-  const totFigV = ventas.filter(v=>v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
-  const totAlbV = ventas.filter(v=>v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
+  const cp      = compraPrincipal();
+  const cpId    = cp ? cp.id : null;
+  const figVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
+  const albVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
   const totRec  = ventas.reduce((s,v)=>s+v.total,0);
   const totCosto= COMPRAS.reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
   const ganancia= totRec-totCosto;
-  const resAct  = reservas.filter(r=>r.estado!=='Cancelada').length;
-  const totFigC = COMPRAS.reduce((s,c)=>s+c.figCompradas,0);
-  const totAlbC = COMPRAS.reduce((s,c)=>s+c.albComprados,0);
+  const figRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
+  const albRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Album').reduce((s,r)=>s+r.cantidad,0);
+  const conf    = reservas.filter(r=>r.estado==='Confirmada').length;
 
   const kpis=[
-    {l:'Figuritas vendidas', v:fmtN(totFigV), s:`de ${fmtN(totFigC)} compradas`,  cls:'a-blue',  ico:'fa-image'},
-    {l:'Albums vendidos',    v:fmtN(totAlbV), s:`de ${fmtN(totAlbC)} comprados`,  cls:'a-blue',  ico:'fa-book'},
-    {l:'Total recaudado',    v:fmt(totRec),   s:`Costo: ${fmt(totCosto)}`,         cls:'a-green', ico:'fa-dollar-sign'},
-    {l:'Ganancia bruta',     v:fmt(ganancia), s:ganancia>=0?'En positivo':'Aun en negativo', cls:ganancia>=0?'a-green':'a-red', ico:'fa-chart-line'},
-    {l:'Reservas activas',   v:resAct,        s:`${reservas.filter(r=>r.estado==='Pendiente').length} pendientes`, cls:'a-gold', ico:'fa-bookmark'},
+    {l:`Fig. vendidas (${cp?cp.nombre:'—'})`, v:fmtN(figVP), s:`de ${fmtN(cp?cp.figCompradas:0)} compradas`, cls:'a-blue',  ico:'fa-image'},
+    {l:`Alb. vendidos (${cp?cp.nombre:'—'})`, v:fmtN(albVP), s:`de ${fmtN(cp?cp.albComprados:0)} comprados`, cls:'a-blue',  ico:'fa-book'},
+    {l:'Total recaudado',  v:fmt(totRec),   s:`Costo: ${fmt(totCosto)}`,          cls:'a-green', ico:'fa-dollar-sign'},
+    {l:'Ganancia bruta',   v:fmt(ganancia), s:ganancia>=0?'En positivo':'Aún en negativo', cls:ganancia>=0?'a-green':'a-red', ico:'fa-chart-line'},
   ];
 
   $('#kpi-row').html(kpis.map(k=>`
-    <div class="col mb-3">
+    <div class="col-6 col-sm kpi-col mb-3">
       <div class="kpi-card ${k.cls}">
         <i class="fas ${k.ico} kpi-ico"></i>
         <div class="kpi-lbl">${k.l}</div>
         <div class="kpi-val">${k.v}</div>
         <div class="kpi-sub">${k.s}</div>
       </div>
-    </div>`).join(''));
+    </div>`).join('') + `
+    <div class="col-6 col-sm kpi-col mb-3">
+      <div class="kpi-card a-gold">
+        <i class="fas fa-bookmark kpi-ico"></i>
+        <div class="kpi-lbl" style="margin-bottom:8px">Reservas</div>
+        <div class="d-flex justify-content-between align-items-baseline mb-1">
+          <span style="font-size:.72rem;color:var(--muted)">Figuritas</span>
+          <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem">${fmtN(figRes)}</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-baseline mb-1">
+          <span style="font-size:.72rem;color:var(--muted)">Álbumes</span>
+          <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem">${fmtN(albRes)}</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-baseline">
+          <span style="font-size:.72rem;color:var(--muted)">Confirmadas</span>
+          <span style="font-family:'Bebas Neue',cursive;font-size:1.2rem;color:var(--success)">${conf}</span>
+        </div>
+      </div>
+    </div>`);
 
   // Reservas recientes
-  const resShow=reservas.filter(r=>r.estado!=='Cancelada').slice(0,6);
+  const resShow=reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida').slice(0,6);
   $('#dash-res-body').html(resShow.length
     ? resShow.map(r=>`<tr>
         <td>${r.comprador}</td><td>${bdgProd(r.producto)}</td>
@@ -610,12 +760,12 @@ function renderVentasTable(){
   const rows=ventasByC(activeCompra);
   $('#ventas-body').html(rows.length
     ? rows.map(v=>`<tr>
-        <td>${v.fecha}</td><td>${v.vendedor}</td><td>${bdgProd(v.producto)}</td>
+        <td>${v.fecha}</td><td class="hide-mobile">${v.vendedor}</td><td>${bdgProd(v.producto)}</td>
         <td>${v.comprador}</td>
         <td class="text-right">${fmtN(v.cantidad)}</td>
-        <td class="text-right">${fmt(v.precio)}</td>
+        <td class="text-right hide-mobile">${fmt(v.precio)}</td>
         <td class="text-right text-ac">${fmt(v.total)}</td>
-        <td class="text-muted" style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.obs||''}</td>
+        <td class="text-muted hide-mobile" style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.obs||''}</td>
         <td>
           <button class="btn-act ev" data-id="${v.id}" title="Editar"><i class="fas fa-pen"></i></button>
           <button class="btn-act del dv" data-id="${v.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
@@ -638,23 +788,34 @@ function renderVentasTable(){
 }
 
 function openVentaModal(id=null){
-  editVId=id;
+  editVId=id; precioManual=false;
   const v=id?ventas.find(x=>x.id===id):null;
   $('#mv-title').text(id?'Editar Venta':'Nueva Venta');
   $('#v-fecha').val(v?v.fecha:today());
   $('#v-vendedor').val(v?v.vendedor:'Kevin');
   $('#v-producto').val(v?v.producto:'Figurita');
+  // Poblar select de compras dinámicamente
+  $('#v-compra').html(COMPRAS.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join(''));
   $('#v-compra').val(v?v.compra:activeCompra);
   $('#v-comprador').val(v?v.comprador:'');
-  $('#v-cantidad').val(v?v.cantidad:1);
-  $('#v-precio').val(v?v.precio:2000);
-  $('#v-total').val(v?v.total:(1*2000));
+  const cant = v?v.cantidad:1;
+  const prod = v?v.producto:'Figurita';
+  $('#v-cantidad').val(cant);
+  $('#v-precio').val(v?v.precio:getPrecioSugerido(cant,prod));
+  $('#v-total').val(v?v.total:getPrecioSugerido(cant,prod)*cant);
   $('#v-obs').val(v?v.obs:'');
   $('#modalVenta').modal('show');
 }
 const openEditVenta=id=>openVentaModal(id);
 
-$('#v-cantidad,#v-precio').on('input',()=>$('#v-total').val((+$('#v-cantidad').val()||0)*(+$('#v-precio').val()||0)));
+$('#v-precio').on('input',()=>{ precioManual=true; $('#v-total').val((+$('#v-cantidad').val()||0)*(+$('#v-precio').val()||0)); });
+$('#v-cantidad,#v-producto').on('input change',function(){
+  if(!precioManual){
+    const p=getPrecioSugerido(+$('#v-cantidad').val()||1,$('#v-producto').val());
+    $('#v-precio').val(p);
+  }
+  $('#v-total').val((+$('#v-cantidad').val()||0)*(+$('#v-precio').val()||0));
+});
 
 $('#btn-sv-venta').on('click', async function(){
   const d={
@@ -677,21 +838,21 @@ $('#btn-add-venta').on('click',()=>openVentaModal());
 // RESERVAS
 // =============================================================
 function renderReservas(){
-  const act=reservas.filter(r=>r.estado!=='Cancelada');
+  const act=reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida');
   $('#res-cnt').text(act.length);
   $('#res-tot').text(fmt(act.reduce((s,r)=>s+r.total,0)));
   $('#res-senia').text(fmt(act.reduce((s,r)=>s+(r.sena||0),0)));
 
   $('#reservas-body').html(reservas.length
-    ? reservas.map(r=>`<tr>
-        <td>${r.fecha}</td><td>${r.vendedor}</td><td>${bdgProd(r.producto)}</td>
+    ? reservas.map(r=>`<tr class="${r.estado==='Vendida'?'row-vendida':''}">
+        <td>${r.fecha}</td><td class="hide-mobile">${r.vendedor}</td><td class="hide-mobile">${bdgProd(r.producto)}</td>
         <td>${r.comprador}</td>
         <td class="text-right">${fmtN(r.cantidad)}</td>
-        <td class="text-right">${fmt(r.precio)}</td>
+        <td class="text-right hide-mobile">${fmt(r.precio)}</td>
         <td class="text-right text-ac">${fmt(r.total)}</td>
-        <td class="text-right">${r.sena>0?fmt(r.sena):'<span class="text-muted">—</span>'}</td>
+        <td class="text-right hide-mobile">${r.sena>0?fmt(r.sena):'<span class="text-muted">—</span>'}</td>
         <td>${bdgEst(r.estado)}</td>
-        <td class="text-muted" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||''}</td>
+        <td class="text-muted hide-mobile" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||''}</td>
         <td>
           <button class="btn-act er" data-id="${r.id}" title="Editar"><i class="fas fa-pen"></i></button>
           <button class="btn-act del dr" data-id="${r.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
@@ -709,23 +870,32 @@ function renderReservas(){
 }
 
 function openReservaModal(id=null){
-  editRId=id;
+  editRId=id; precioManualR=false;
   const r=id?reservas.find(x=>x.id===id):null;
   $('#mr-title').text(id?'Editar Reserva':'Nueva Reserva');
   $('#r-fecha').val(r?r.fecha:today());
   $('#r-vendedor').val(r?r.vendedor:'Kevin');
-  $('#r-producto').val(r?r.producto:'Album');
+  const prod=r?r.producto:'Album';
+  $('#r-producto').val(prod);
   $('#r-estado').val(r?r.estado:'Confirmada');
   $('#r-comprador').val(r?r.comprador:'');
-  $('#r-cantidad').val(r?r.cantidad:1);
-  $('#r-precio').val(r?r.precio:14000);
+  const cant=r?r.cantidad:1;
+  $('#r-cantidad').val(cant);
+  $('#r-precio').val(r?r.precio:getPrecioSugerido(cant,prod));
   $('#r-senia').val(r?r.sena:0);
-  $('#r-total').val(r?r.total:(1*14000));
+  $('#r-total').val(r?r.total:getPrecioSugerido(cant,prod)*cant);
   $('#r-obs').val(r?r.obs:'');
   $('#modalReserva').modal('show');
 }
 
-$('#r-cantidad,#r-precio').on('input',()=>$('#r-total').val((+$('#r-cantidad').val()||0)*(+$('#r-precio').val()||0)));
+$('#r-precio').on('input',()=>{ precioManualR=true; $('#r-total').val((+$('#r-cantidad').val()||0)*(+$('#r-precio').val()||0)); });
+$('#r-cantidad,#r-producto').on('input change',function(){
+  if(!precioManualR){
+    const p=getPrecioSugerido(+$('#r-cantidad').val()||1,$('#r-producto').val());
+    $('#r-precio').val(p);
+  }
+  $('#r-total').val((+$('#r-cantidad').val()||0)*(+$('#r-precio').val()||0));
+});
 
 $('#btn-sv-reserva').on('click', async function(){
   const d={
@@ -736,6 +906,24 @@ $('#btn-sv-reserva').on('click', async function(){
     obs:$('#r-obs').val()
   };
   if(!d.comprador||!d.cantidad) return alert('Completa los campos requeridos.');
+
+  const prev       = editRId ? reservas.find(x=>x.id===editRId) : null;
+  const wasVendida = prev?.estado==='Vendida';
+  const isNowVendida = d.estado==='Vendida';
+
+  if(!wasVendida && isNowVendida){
+    const cp = compraPrincipal();
+    const { data: nv } = await db.from('ventas')
+      .insert({ fecha:d.fecha, vendedor:d.vendedor, producto:d.producto,
+                comprador:d.comprador, cantidad:d.cantidad, precio:d.precio,
+                total:d.total, obs:(d.obs||'Desde reserva'), compra:cp.id })
+      .select().single();
+    d.venta_id = nv.id;
+  } else if(wasVendida && !isNowVendida){
+    if(prev.venta_id) await db.from('ventas').delete().eq('id', prev.venta_id);
+    d.venta_id = null;
+  }
+
   if(editRId){ await db.from('reservas').update(d).eq('id', editRId); }
   else { await db.from('reservas').insert(d); }
   await loadData();
@@ -756,7 +944,15 @@ function renderStock(){
     const g=rec-costo;
     return `<div class="col-md-6 mb-4">
       <div class="tbl-wrap h-100">
-        <div class="tbl-head"><h5><i class="fas fa-layer-group text-ac mr-2"></i>${c.nombre} ${bdgComp(c)}</h5></div>
+        <div class="tbl-head">
+          <h5><i class="fas fa-layer-group text-ac mr-2"></i>${c.nombre} ${bdgComp(c)}</h5>
+          <div class="switch-principal-wrap">
+            <input type="checkbox" id="sp-${c.id}" class="switch-principal" data-cid="${c.id}" ${c.esPrincipal?'checked':''} style="cursor:pointer;accent-color:var(--accent)">
+            <label for="sp-${c.id}" style="font-size:.72rem;color:${c.esPrincipal?'var(--accent)':'var(--muted)'};margin:0;cursor:pointer">
+              ${c.esPrincipal?'★ Compra principal':'Definir como principal'}
+            </label>
+          </div>
+        </div>
         <div class="p-3">
           <div class="sec-title" style="font-size:.68rem"><i class="fas fa-image mr-1"></i>Figuritas</div>
           <div class="row text-center mb-2">
@@ -796,6 +992,34 @@ function stockRow(val,label,color){
   </div>`;
 }
 
+$(document).off('change','.switch-principal').on('change','.switch-principal', async function(){
+  const cid=$(this).data('cid');
+  await db.from('compras').update({es_principal:false}).neq('id',cid);
+  await db.from('compras').update({es_principal:true}).eq('id',cid);
+  await loadData();
+  renderStock(); renderDashboard();
+});
+
+$('#btn-add-compra').on('click',()=>{ $('#c-nombre').val(''); $('#c-fig-cant').val(0); $('#c-fig-costo').val(0); $('#c-alb-cant').val(0); $('#c-alb-costo').val(0); $('#modalCompra').modal('show'); });
+
+$('#btn-sv-compra').on('click', async function(){
+  const nombre=$('#c-nombre').val().trim();
+  if(!nombre) return alert('Ingresa un nombre para la compra.');
+  let nextNum=COMPRAS.length+1;
+  let newId='C'+nextNum;
+  while(COMPRAS.find(c=>c.id===newId)){ nextNum++; newId='C'+nextNum; }
+  await db.from('compras').insert({
+    id:newId, nombre, fig_compradas:+$('#c-fig-cant').val()||0,
+    alb_comprados:+$('#c-alb-cant').val()||0,
+    costo_fig:+$('#c-fig-costo').val()||0,
+    costo_alb:+$('#c-alb-costo').val()||0,
+    estado:'En curso', es_principal:false
+  });
+  await loadData();
+  $('#modalCompra').modal('hide');
+  renderStock(); renderDashboard();
+});
+
 // =============================================================
 // PRIMOS
 // =============================================================
@@ -834,17 +1058,17 @@ function renderPrimos(){
           <div class="col-4"><div class="kpi-lbl">Alb. vendidos</div><div class="font-weight-bold">${fmtN(albV)}</div></div>
           <div class="col-4"><div class="kpi-lbl">Recaudado</div><div class="font-weight-bold text-ac">${fmt(rec)}</div></div>
         </div>
+        <div class="text-center mb-3" style="background:rgba(0,0,0,.28);border-radius:8px;padding:14px">
+          <div class="kpi-lbl mb-1">Devolución total estimada</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.9rem;color:${col.fg}">${fmt(total)}</div>
+          <div style="font-size:.71rem;color:var(--muted)">Inversión ${fmt(inv)} + Ganancia ${fmt(Math.round(ganEst))}</div>
+        </div>
         <div style="background:rgba(0,0,0,.18);border-radius:8px;padding:12px">
-          <div class="kpi-lbl mb-2">Inversion por compra</div>
+          <div class="kpi-lbl mb-2">Inversión por compra</div>
           ${COMPRAS.map(c=>`<div class="d-flex justify-content-between mb-1">
             <span style="font-size:.78rem;color:var(--muted)">${c.nombre}</span>
             <span style="font-size:.82rem;font-weight:600;color:${col.fg}">${fmt(c.inversiones[p]||0)}</span>
           </div>`).join('')}
-          <hr style="border-color:var(--border);margin:8px 0">
-          <div class="d-flex justify-content-between">
-            <span style="font-size:.78rem;font-weight:700">Total estimado</span>
-            <span style="font-family:'Bebas Neue',cursive;font-size:.95rem;color:${col.fg}">${fmt(total)}</span>
-          </div>
         </div>
       </div>
     </div>`;
@@ -854,20 +1078,69 @@ function renderPrimos(){
 // =============================================================
 // PRECIOS
 // =============================================================
-function renderPrecios(){
-  $('#prec-fig-body').html(PRECIOS_FIG.map(p=>`<tr>
-    <td>${p.cantidad===1?'Unidad':fmtN(p.cantidad)+'+'}</td>
-    <td class="precio-val">${fmt(p.precio)}</td>
-    <td class="text-muted">${fmt(p.precio*50)}</td>
-    <td class="text-muted">${fmt(p.precio*100)}</td>
-  </tr>`).join(''));
+async function savePrecio(id, newPrecio){
+  await db.from('precios').update({precio:+newPrecio}).eq('id',id);
+  await loadData(); renderPrecios();
+}
 
-  $('#prec-alb-body').html(PRECIOS_ALB.map(p=>`<tr>
+async function addPrecioTier(tipo, cant, precio){
+  await db.from('precios').insert({tipo, cantidad_min:+cant, precio:+precio});
+  await loadData(); renderPrecios();
+}
+
+async function deletePrecioTier(id){
+  await db.from('precios').delete().eq('id',id);
+  await loadData(); renderPrecios();
+}
+
+function makeEditablePrecio(p, multA, multB){
+  return `<tr>
     <td>${p.cantidad===1?'Unidad':fmtN(p.cantidad)+'+'}</td>
-    <td class="precio-val">${fmt(p.precio)}</td>
-    <td class="text-muted">${fmt(p.precio*5)}</td>
-    <td class="text-muted">${fmt(p.precio*10)}</td>
-  </tr>`).join(''));
+    <td><span class="precio-editable precio-val" data-id="${p.id}" data-val="${p.precio}" title="Click para editar">${fmt(p.precio)}</span></td>
+    <td class="text-muted" data-ref-id="${p.id}" data-mult="${multA}">${fmt(p.precio*multA)}</td>
+    <td class="text-muted" data-ref-id="${p.id}" data-mult="${multB}">${fmt(p.precio*multB)}</td>
+    <td><button class="btn-act del del-precio" data-id="${p.id}" title="Eliminar tramo"><i class="fas fa-trash"></i></button></td>
+  </tr>`;
+}
+
+function renderPrecios(){
+  $('#prec-fig-body').html(PRECIOS_FIG.map(p=>makeEditablePrecio(p,50,100)).join('') +
+    `<tr><td colspan="5">
+      <button class="btn-out btn btn-sm mt-1 add-tier-fig"><i class="fas fa-plus mr-1"></i>Nuevo tramo</button>
+    </td></tr>`);
+
+  $('#prec-alb-body').html(PRECIOS_ALB.map(p=>makeEditablePrecio(p,5,10)).join('') +
+    `<tr><td colspan="5">
+      <button class="btn-out btn btn-sm mt-1 add-tier-alb"><i class="fas fa-plus mr-1"></i>Nuevo tramo</button>
+    </td></tr>`);
+
+  $(document).off('click','.precio-editable').on('click','.precio-editable',function(){
+    const $s=$(this), id=$s.data('id'), val=$s.data('val');
+    const $inp=$(`<input type="number" class="form-control form-control-sm d-inline-block" style="width:110px" value="${val}">`);
+    $s.replaceWith($inp); $inp.focus();
+    $inp.on('blur keydown', async function(e){
+      if(e.type==='keydown'&&e.key!=='Enter') return;
+      await savePrecio(id,$inp.val());
+    });
+  });
+
+  $(document).off('click','.del-precio').on('click','.del-precio', async function(){
+    if(confirm('Eliminar este tramo de precio?')){
+      await deletePrecioTier($(this).data('id'));
+    }
+  });
+
+  $(document).off('click','.add-tier-fig').on('click','.add-tier-fig',function(){
+    const cant=prompt('Cantidad mínima:'); if(!cant) return;
+    const precio=prompt('Precio unitario ($):'); if(!precio) return;
+    addPrecioTier('figurita',cant,precio);
+  });
+
+  $(document).off('click','.add-tier-alb').on('click','.add-tier-alb',function(){
+    const cant=prompt('Cantidad mínima:'); if(!cant) return;
+    const precio=prompt('Precio unitario ($):'); if(!precio) return;
+    addPrecioTier('album',cant,precio);
+  });
 }
 
 // =============================================================
@@ -878,8 +1151,8 @@ const PAGE_TITLES={dashboard:'Dashboard',ventas:'Ventas',reservas:'Reservas',sto
 function goTo(page){
   $('.page').removeClass('active');
   $(`#page-${page}`).addClass('active');
-  $('.nav-item').removeClass('active');
-  $(`.nav-item[data-page="${page}"]`).addClass('active');
+  $('.nav-item,.mob-nav-item').removeClass('active');
+  $(`.nav-item[data-page="${page}"],.mob-nav-item[data-page="${page}"]`).addClass('active');
   $('#page-title').text(PAGE_TITLES[page]);
 
   if(page==='dashboard') renderDashboard();
@@ -890,14 +1163,27 @@ function goTo(page){
   else if(page==='precios') renderPrecios();
 }
 
-$('.nav-item').on('click',function(){ goTo($(this).data('page')); });
+$('.nav-item').on('click',function(){ goTo($(this).data('page')); closeSidebar(); });
+$('.mob-nav-item').on('click',function(){ goTo($(this).data('page')); });
+
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+$('#btn-menu').on('click',function(){
+  const open = document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('show', open);
+});
 
 // Init
 (async () => {
   await loadData();
+  activeCompra = compraPrincipal()?.id || COMPRAS[0]?.id || 'C1';
   goTo('dashboard');
 })();
 </script>
 </body>
 </html>
+
 
