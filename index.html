@@ -714,6 +714,13 @@ function pct(v,t){ return t?Math.min(100,Math.max(0,Math.round(v/t*100))):0; }
 
 function compraPrincipal(){ return COMPRAS.find(c=>c.esPrincipal) || COMPRAS[COMPRAS.length-1]; }
 
+async function btnGuardar($btn, fn){
+  if($btn.prop('disabled')) return;
+  const orig=$btn.html();
+  $btn.prop('disabled',true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...');
+  try{ await fn(); } finally{ $btn.prop('disabled',false).html(orig); }
+}
+
 function stockChip(val, lbl, icon){
   const cls = val <= 0 ? 'sc-zero' : val <= 10 ? 'sc-warn' : 'sc-ok';
   return `<div class="stock-chip ${cls}">
@@ -969,12 +976,13 @@ function renderVentasTable(){
   $('#ventas-filter-clear').off('click').on('click',function(){ ventasFilter=''; $('#ventas-filter-input').val(''); renderVentasTable(); });
 
   $('.ev').on('click',function(){ openEditVenta(+$(this).data('id')); });
-  $('.dv').on('click', async function(){
-    if(confirm('Eliminar esta venta?')){
+  $('.dv').on('click', function(){
+    if(!confirm('Eliminar esta venta?')) return;
+    btnGuardar($(this), async ()=>{
       await db.from('ventas').delete().eq('id', +$(this).data('id'));
       await loadData();
       renderVentasTable(); renderDashboard();
-    }
+    });
   });
 }
 
@@ -1008,7 +1016,7 @@ $('#v-cantidad,#v-producto').on('input change',function(){
   $('#v-total').val((+$('#v-cantidad').val()||0)*(+$('#v-precio').val()||0));
 });
 
-$('#btn-sv-venta').on('click', async function(){
+$('#btn-sv-venta').on('click', function(){
   const d={
     fecha:$('#v-fecha').val(), vendedor:$('#v-vendedor').val(), producto:$('#v-producto').val(),
     comprador:$('#v-comprador').val(), cantidad:+$('#v-cantidad').val()||0,
@@ -1016,11 +1024,13 @@ $('#btn-sv-venta').on('click', async function(){
     obs:$('#v-obs').val(), compra:$('#v-compra').val()
   };
   if(!d.comprador||!d.cantidad) return alert('Completa los campos requeridos.');
-  if(editVId){ await db.from('ventas').update(d).eq('id', editVId); }
-  else { await db.from('ventas').insert(d); }
-  await loadData();
-  $('#modalVenta').modal('hide');
-  activeCompra=d.compra; renderVentasTabs(); renderVentasTable(); renderDashboard();
+  btnGuardar($(this), async ()=>{
+    if(editVId){ await db.from('ventas').update(d).eq('id', editVId); }
+    else { await db.from('ventas').insert(d); }
+    await loadData();
+    $('#modalVenta').modal('hide');
+    activeCompra=d.compra; renderVentasTabs(); renderVentasTable(); renderDashboard();
+  });
 });
 
 $('#btn-add-venta').on('click',()=>openVentaModal());
@@ -1099,12 +1109,13 @@ function renderReservas(){
   $('#reservas-filter-clear').off('click').on('click',function(){ reservasFilter=''; $('#reservas-filter-input').val(''); renderReservas(); });
 
   $('.er').on('click',function(){ openReservaModal(+$(this).data('id')); });
-  $('.dr').on('click', async function(){
-    if(confirm('Eliminar esta reserva?')){
+  $('.dr').on('click', function(){
+    if(!confirm('Eliminar esta reserva?')) return;
+    btnGuardar($(this), async ()=>{
       await db.from('reservas').delete().eq('id', +$(this).data('id'));
       await loadData();
       renderReservas(); renderDashboard();
-    }
+    });
   });
 }
 
@@ -1138,7 +1149,7 @@ $('#r-cantidad,#r-producto').on('input change',function(){
   $('#r-total').val((+$('#r-cantidad').val()||0)*(+$('#r-precio').val()||0));
 });
 
-$('#btn-sv-reserva').on('click', async function(){
+$('#btn-sv-reserva').on('click', function(){
   const d={
     fecha:$('#r-fecha').val(), vendedor:$('#r-vendedor').val(), producto:$('#r-producto').val(),
     estado:$('#r-estado').val(), comprador:$('#r-comprador').val(),
@@ -1147,30 +1158,31 @@ $('#btn-sv-reserva').on('click', async function(){
     obs:$('#r-obs').val(), compra:$('#r-compra').val()
   };
   if(!d.comprador||!d.cantidad) return alert('Completa los campos requeridos.');
+  btnGuardar($(this), async ()=>{
+    const prev       = editRId ? reservas.find(x=>x.id===editRId) : null;
+    const wasVendida = prev?.estado==='Vendida';
+    const isNowVendida = d.estado==='Vendida';
 
-  const prev       = editRId ? reservas.find(x=>x.id===editRId) : null;
-  const wasVendida = prev?.estado==='Vendida';
-  const isNowVendida = d.estado==='Vendida';
+    if(!wasVendida && isNowVendida){
+      const cp = compraPrincipal();
+      const { data: nv } = await db.from('ventas')
+        .insert({ fecha:d.fecha, vendedor:d.vendedor, producto:d.producto,
+                  comprador:d.comprador, cantidad:d.cantidad, precio:d.precio,
+                  total:d.total, obs:(d.obs||'Desde reserva'), compra:cp.id })
+        .select().single();
+      d.venta_id = nv.id;
+    } else if(wasVendida && !isNowVendida){
+      if(prev.venta_id) await db.from('ventas').delete().eq('id', prev.venta_id);
+      d.venta_id = null;
+    }
 
-  if(!wasVendida && isNowVendida){
-    const cp = compraPrincipal();
-    const { data: nv } = await db.from('ventas')
-      .insert({ fecha:d.fecha, vendedor:d.vendedor, producto:d.producto,
-                comprador:d.comprador, cantidad:d.cantidad, precio:d.precio,
-                total:d.total, obs:(d.obs||'Desde reserva'), compra:cp.id })
-      .select().single();
-    d.venta_id = nv.id;
-  } else if(wasVendida && !isNowVendida){
-    if(prev.venta_id) await db.from('ventas').delete().eq('id', prev.venta_id);
-    d.venta_id = null;
-  }
-
-  if(editRId){ await db.from('reservas').update(d).eq('id', editRId); }
-  else { await db.from('reservas').insert(d); }
-  await loadData();
-  activeReservaCompra = d.compra;
-  $('#modalReserva').modal('hide');
-  renderReservasTabs(); renderReservas(); renderDashboard();
+    if(editRId){ await db.from('reservas').update(d).eq('id', editRId); }
+    else { await db.from('reservas').insert(d); }
+    await loadData();
+    activeReservaCompra = d.compra;
+    $('#modalReserva').modal('hide');
+    renderReservasTabs(); renderReservas(); renderDashboard();
+  });
 });
 
 $('#btn-add-reserva').on('click',()=>openReservaModal());
@@ -1240,17 +1252,18 @@ function renderStock(){
     renderStock(); renderDashboard(); renderPrimos();
   });
 
-  $('.btn-set-principal').off('click').on('click', async function(){
+  $('.btn-set-principal').off('click').on('click', function(){
     const cid = $(this).attr('data-cid');
-    $(this).text('Guardando...').prop('disabled', true);
-    const updates = COMPRAS.map(c =>
-      db.from('compras').update({ es_principal: c.id === cid }).eq('id', c.id)
-    );
-    const results = await Promise.all(updates);
-    const err = results.find(r => r.error);
-    if(err){ alert('Error al guardar: ' + err.error.message); return; }
-    await loadData();
-    renderStock(); renderDashboard();
+    btnGuardar($(this), async ()=>{
+      const updates = COMPRAS.map(c =>
+        db.from('compras').update({ es_principal: c.id === cid }).eq('id', c.id)
+      );
+      const results = await Promise.all(updates);
+      const err = results.find(r => r.error);
+      if(err){ alert('Error al guardar: ' + err.error.message); return; }
+      await loadData();
+      renderStock(); renderDashboard();
+    });
   });
 }
 
@@ -1264,24 +1277,26 @@ function stockRow(val,label,color){
 
 $('#btn-add-compra').on('click',()=>{ $('#c-nombre').val(''); $('#c-fig-cant').val(0); $('#c-fig-costo').val(0); $('#c-alb-cant').val(0); $('#c-alb-costo').val(0); $('#modalCompra').modal('show'); });
 
-$('#btn-sv-compra').on('click', async function(){
+$('#btn-sv-compra').on('click', function(){
   const nombre=$('#c-nombre').val().trim();
   if(!nombre) return alert('Ingresa un nombre para la compra.');
-  let nextNum=COMPRAS.length+1;
-  let newId='C'+nextNum;
-  while(COMPRAS.find(c=>c.id===newId)){ nextNum++; newId='C'+nextNum; }
-  const { error } = await db.from('compras').insert({
-    id:newId, nombre, fig_compradas:+$('#c-fig-cant').val()||0,
-    alb_comprados:+$('#c-alb-cant').val()||0,
-    costo_fig:+$('#c-fig-costo').val()||0,
-    costo_alb:+$('#c-alb-costo').val()||0,
-    estado:'En curso', es_principal:false
+  btnGuardar($(this), async ()=>{
+    let nextNum=COMPRAS.length+1;
+    let newId='C'+nextNum;
+    while(COMPRAS.find(c=>c.id===newId)){ nextNum++; newId='C'+nextNum; }
+    const { error } = await db.from('compras').insert({
+      id:newId, nombre, fig_compradas:+$('#c-fig-cant').val()||0,
+      alb_comprados:+$('#c-alb-cant').val()||0,
+      costo_fig:+$('#c-fig-costo').val()||0,
+      costo_alb:+$('#c-alb-costo').val()||0,
+      estado:'En curso', es_principal:false
+    });
+    if(error){ alert('Error al guardar compra: '+error.message); return; }
+    await loadData();
+    $('#modalCompra').modal('hide');
+    renderStock(); renderDashboard();
+    renderVentasTabs(); renderReservasTabs();
   });
-  if(error){ alert('Error al guardar compra: '+error.message); return; }
-  await loadData();
-  $('#modalCompra').modal('hide');
-  renderStock(); renderDashboard();
-  renderVentasTabs(); renderReservasTabs();
 });
 
 // =============================================================
@@ -1390,36 +1405,37 @@ function openPrimoModal(nombre){
   $('#modalPrimo').modal('show');
 }
 
-$('#btn-sv-primo').on('click', async function(){
+$('#btn-sv-primo').on('click', function(){
   const nombre=$('#mp-nombre').val();
   const pd=PRIMO_DATA[nombre];
   if(!pd) return;
+  btnGuardar($(this), async ()=>{
+    // Inversiones: borrar las del primo y reinsertar
+    const nuevasInv=[];
+    $('.mp-inv-input').each(function(){
+      const monto=+$(this).val()||0;
+      if(monto>0) nuevasInv.push({compra_id:$(this).attr('data-cid'), primo:nombre, monto});
+    });
+    const {error:e1}=await db.from('inversiones').delete().eq('primo',nombre);
+    if(e1){alert('Error al guardar inversiones: '+e1.message);return;}
+    if(nuevasInv.length>0){
+      const {error:e2}=await db.from('inversiones').insert(nuevasInv);
+      if(e2){alert('Error al guardar inversiones: '+e2.message);return;}
+    }
 
-  // Inversiones: borrar las del primo y reinsertar
-  const nuevasInv=[];
-  $('.mp-inv-input').each(function(){
-    const monto=+$(this).val()||0;
-    if(monto>0) nuevasInv.push({compra_id:$(this).attr('data-cid'), primo:nombre, monto});
+    // Datos del primo
+    const pctVal=$('#mp-porcentaje').val();
+    const {error:e3}=await db.from('primos').update({
+      porcentaje: pctVal!==''?+pctVal:null,
+      deudor_1:$('#mp-deudor1').val()||null, deuda_1:+$('#mp-deuda1').val()||0,
+      deudor_2:$('#mp-deudor2').val()||null, deuda_2:+$('#mp-deuda2').val()||0
+    }).eq('id',pd.id);
+    if(e3){alert('Error al guardar: '+e3.message);return;}
+
+    await loadData();
+    $('#modalPrimo').modal('hide');
+    renderPrimos(); renderDashboard();
   });
-  const {error:e1}=await db.from('inversiones').delete().eq('primo',nombre);
-  if(e1){alert('Error al guardar inversiones: '+e1.message);return;}
-  if(nuevasInv.length>0){
-    const {error:e2}=await db.from('inversiones').insert(nuevasInv);
-    if(e2){alert('Error al guardar inversiones: '+e2.message);return;}
-  }
-
-  // Datos del primo
-  const pctVal=$('#mp-porcentaje').val();
-  const {error:e3}=await db.from('primos').update({
-    porcentaje: pctVal!==''?+pctVal:null,
-    deudor_1:$('#mp-deudor1').val()||null, deuda_1:+$('#mp-deuda1').val()||0,
-    deudor_2:$('#mp-deudor2').val()||null, deuda_2:+$('#mp-deuda2').val()||0
-  }).eq('id',pd.id);
-  if(e3){alert('Error al guardar: '+e3.message);return;}
-
-  await loadData();
-  $('#modalPrimo').modal('hide');
-  renderPrimos(); renderDashboard();
 });
 
 // =============================================================
@@ -1533,9 +1549,6 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
-
-
-
 
 
 
