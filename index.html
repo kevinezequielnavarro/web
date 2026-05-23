@@ -855,16 +855,16 @@ function renderDashboard(){
       </div>
     </div>`);
 
-  // Reservas recientes
-  const resShow=reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida').slice(0,6);
+  // Reservas confirmadas en dashboard
+  const resShow=reservas.filter(r=>r.estado==='Confirmada');
   $('#dash-res-body').html(resShow.length
     ? resShow.map(r=>`<tr>
         <td>${r.comprador}</td><td>${bdgProd(r.producto)}</td>
         <td class="text-right">${fmtN(r.cantidad)}</td>
         <td class="text-right text-ac">${fmt(r.total)}</td>
         <td>${bdgEst(r.estado)}</td></tr>`).join('')
-    : '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-bookmark"></i><p>Sin reservas</p></div></td></tr>');
-  $('#dash-res-cnt').text(`${resShow.length} activas`);
+    : '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-bookmark"></i><p>Sin reservas confirmadas</p></div></td></tr>');
+  $('#dash-res-cnt').text(`${resShow.length} confirmadas`);
 
   // Primos
   $('#dash-primos-body').html(PRIMOS.map(p=>{
