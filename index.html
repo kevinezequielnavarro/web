@@ -531,6 +531,57 @@
   </div>
 </div>
 
+<!-- ===== MODAL PRIMO ===== -->
+<div class="modal fade" id="modalPrimo" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mp-title">Editar primo</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="mp-nombre">
+        <div class="sec-title" style="font-size:.68rem;margin-bottom:8px"><i class="fas fa-coins mr-1"></i>Inversión por compra</div>
+        <div id="mp-inversiones-body"></div>
+        <hr style="border-color:var(--border);margin:14px 0">
+        <div class="sec-title" style="font-size:.68rem;margin-bottom:8px"><i class="fas fa-percent mr-1"></i>Porcentaje de ganancia</div>
+        <div class="form-row align-items-center">
+          <div class="form-group col-6 mb-0">
+            <input type="number" class="form-control" id="mp-porcentaje" min="0" max="100" step="0.1" placeholder="Auto (calculado)">
+          </div>
+          <div class="col-6 text-muted" style="font-size:.77rem" id="mp-pct-info"></div>
+        </div>
+        <hr style="border-color:var(--border);margin:14px 0">
+        <div class="sec-title" style="font-size:.68rem;margin-bottom:8px"><i class="fas fa-hand-holding-usd mr-1"></i>Deudas con otros primos</div>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label style="font-size:.75rem">Le debe a</label>
+            <select class="form-control" id="mp-deudor1"><option value="">— Ninguno —</option></select>
+          </div>
+          <div class="form-group col-6">
+            <label style="font-size:.75rem">Monto ($)</label>
+            <input type="number" class="form-control" id="mp-deuda1" min="0" value="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label style="font-size:.75rem">También le debe a</label>
+            <select class="form-control" id="mp-deudor2"><option value="">— Ninguno —</option></select>
+          </div>
+          <div class="form-group col-6">
+            <label style="font-size:.75rem">Monto ($)</label>
+            <input type="number" class="form-control" id="mp-deuda2" min="0" value="0">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-out" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-gold" id="btn-sv-primo"><i class="fas fa-check mr-1"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -584,6 +635,7 @@ let reservas = [];
 
 let activeCompra = 'C1';
 let activeReservaCompra = 'C1';
+let PRIMO_DATA = {};
 let editVId = null, editRId = null;
 let precioManual = false, precioManualR = false;
 
@@ -698,6 +750,12 @@ async function loadData() {
   if (prim && prim.length) {
     PRIMOS       = prim.map(p => p.nombre);
     PRIMO_COLORS = Object.fromEntries(prim.map(p => [p.nombre, { bg: p.color_bg, fg: p.color_fg }]));
+    PRIMO_DATA   = Object.fromEntries(prim.map(p => [p.nombre, {
+      id: p.id,
+      porcentaje: p.porcentaje ?? null,
+      deudor1: p.deudor_1 || null, deuda1: p.deuda_1 || 0,
+      deudor2: p.deudor_2 || null, deuda2: p.deuda_2 || 0
+    }]));
   }
   if (prec && prec.length) {
     PRECIOS_FIG = prec.filter(p => p.tipo === 'figurita').map(p => ({ id: p.id, cantidad: p.cantidad_min, precio: p.precio }));
@@ -1101,26 +1159,37 @@ function renderPrimos(){
 
   $('#primos-row').html(PRIMOS.map(p=>{
     const col=PRIMO_COLORS[p];
+    const pd=PRIMO_DATA[p]||{};
     const inv=COMPRAS.reduce((s,c)=>s+(c.inversiones[p]||0),0);
     const invTot=COMPRAS.reduce((s,c)=>s+Object.values(c.inversiones).reduce((a,b)=>a+b,0),0);
-    const ppct=invTot?+(inv/invTot*100).toFixed(1):0;
-    const ganEst=invTot?ganTotal*(inv/invTot):0;
+    const autoPct=invTot?+(inv/invTot*100).toFixed(1):0;
+    const ppct=pd.porcentaje!=null?+pd.porcentaje:autoPct;
+    const ganEst=ganTotal*(ppct/100);
     const total=inv+ganEst;
     const figV=ventas.filter(v=>v.vendedor===p&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
     const albV=ventas.filter(v=>v.vendedor===p&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
     const rec =ventas.filter(v=>v.vendedor===p).reduce((s,v)=>s+v.total,0);
 
+    const deudaRows=[];
+    if(pd.deudor1&&pd.deuda1>0) deudaRows.push(`<div class="d-flex justify-content-between mb-1">
+      <span style="font-size:.78rem;color:var(--muted)"><i class="fas fa-arrow-right mr-1" style="font-size:.65rem"></i>Le debe a ${pd.deudor1}</span>
+      <span style="font-size:.82rem;font-weight:600;color:#f57070">${fmt(pd.deuda1)}</span></div>`);
+    if(pd.deudor2&&pd.deuda2>0) deudaRows.push(`<div class="d-flex justify-content-between mb-1">
+      <span style="font-size:.78rem;color:var(--muted)"><i class="fas fa-arrow-right mr-1" style="font-size:.65rem"></i>Le debe a ${pd.deudor2}</span>
+      <span style="font-size:.82rem;font-weight:600;color:#f57070">${fmt(pd.deuda2)}</span></div>`);
+
     return `<div class="col-md-4 mb-4">
       <div class="primo-card">
         <div class="d-flex align-items-center mb-3">
           <div class="primo-av" style="background:${col.bg};color:${col.fg}">${p[0]}</div>
-          <div>
+          <div class="flex-grow-1">
             <div class="font-weight-bold">${p}</div>
-            <div class="text-muted" style="font-size:.73rem">${ppct}% del capital total</div>
+            <div class="text-muted" style="font-size:.73rem">${ppct}% de ganancia${pd.porcentaje!=null?' <span style="color:var(--accent);font-size:.65rem">(manual)</span>':''}</div>
           </div>
+          <button class="btn-act btn-edit-primo" data-primo="${p}" title="Editar inversión y datos"><i class="fas fa-pen"></i></button>
         </div>
         <div class="row text-center mb-3">
-          <div class="col-6"><div class="kpi-lbl">Inversion total</div><div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;color:${col.fg}">${fmt(inv)}</div></div>
+          <div class="col-6"><div class="kpi-lbl">Inversión total</div><div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;color:${col.fg}">${fmt(inv)}</div></div>
           <div class="col-6"><div class="kpi-lbl">Ganancia est.</div><div style="font-family:'Bebas Neue',cursive;font-size:1.3rem" class="${ganEst>=0?'text-g':'text-r'}">${fmt(ganEst)}</div></div>
         </div>
         <hr style="border-color:var(--border)">
@@ -1140,11 +1209,82 @@ function renderPrimos(){
             <span style="font-size:.78rem;color:var(--muted)">${c.nombre}</span>
             <span style="font-size:.82rem;font-weight:600;color:${col.fg}">${fmt(c.inversiones[p]||0)}</span>
           </div>`).join('')}
+          ${deudaRows.length?`<hr style="border-color:var(--border);margin:10px 0"><div class="kpi-lbl mb-2">Deudas</div>${deudaRows.join('')}`:''}
         </div>
       </div>
     </div>`;
   }).join(''));
+
+  $('.btn-edit-primo').off('click').on('click', function(){
+    openPrimoModal($(this).attr('data-primo'));
+  });
 }
+
+function openPrimoModal(nombre){
+  const pd=PRIMO_DATA[nombre]||{};
+  const col=PRIMO_COLORS[nombre]||{fg:'var(--accent)'};
+  $('#mp-title').html(`<span style="color:${col.fg}">${nombre}</span>`);
+  $('#mp-nombre').val(nombre);
+
+  // Inversiones por compra
+  $('#mp-inversiones-body').html(COMPRAS.map(c=>`
+    <div class="form-row align-items-center mb-2">
+      <label class="col-5 col-form-label" style="font-size:.82rem;color:var(--muted)">${c.nombre}</label>
+      <div class="col-7">
+        <div class="input-group input-group-sm">
+          <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+          <input type="number" class="form-control mp-inv-input" data-cid="${c.id}" min="0" value="${c.inversiones[nombre]||0}">
+        </div>
+      </div>
+    </div>`).join(''));
+
+  // Porcentaje
+  const invTot=COMPRAS.reduce((s,c)=>s+Object.values(c.inversiones).reduce((a,b)=>a+b,0),0);
+  const inv=COMPRAS.reduce((s,c)=>s+(c.inversiones[nombre]||0),0);
+  const autoPct=invTot?+(inv/invTot*100).toFixed(1):0;
+  $('#mp-pct-info').html(`Auto calculado: <strong>${autoPct}%</strong><br><span style="font-size:.7rem">Dejá vacío para usar este valor</span>`);
+  $('#mp-porcentaje').val(pd.porcentaje!=null?pd.porcentaje:'').attr('placeholder',`Auto (${autoPct}%)`);
+
+  // Deudores (excluir al propio primo)
+  const opts='<option value="">— Ninguno —</option>'+PRIMOS.filter(p=>p!==nombre).map(p=>`<option value="${p}">${p}</option>`).join('');
+  $('#mp-deudor1,#mp-deudor2').html(opts);
+  $('#mp-deudor1').val(pd.deudor1||''); $('#mp-deuda1').val(pd.deuda1||0);
+  $('#mp-deudor2').val(pd.deudor2||''); $('#mp-deuda2').val(pd.deuda2||0);
+
+  $('#modalPrimo').modal('show');
+}
+
+$('#btn-sv-primo').on('click', async function(){
+  const nombre=$('#mp-nombre').val();
+  const pd=PRIMO_DATA[nombre];
+  if(!pd) return;
+
+  // Inversiones: borrar las del primo y reinsertar
+  const nuevasInv=[];
+  $('.mp-inv-input').each(function(){
+    const monto=+$(this).val()||0;
+    if(monto>0) nuevasInv.push({compra_id:$(this).attr('data-cid'), primo:nombre, monto});
+  });
+  const {error:e1}=await db.from('inversiones').delete().eq('primo',nombre);
+  if(e1){alert('Error al guardar inversiones: '+e1.message);return;}
+  if(nuevasInv.length>0){
+    const {error:e2}=await db.from('inversiones').insert(nuevasInv);
+    if(e2){alert('Error al guardar inversiones: '+e2.message);return;}
+  }
+
+  // Datos del primo
+  const pctVal=$('#mp-porcentaje').val();
+  const {error:e3}=await db.from('primos').update({
+    porcentaje: pctVal!==''?+pctVal:null,
+    deudor_1:$('#mp-deudor1').val()||null, deuda_1:+$('#mp-deuda1').val()||0,
+    deudor_2:$('#mp-deudor2').val()||null, deuda_2:+$('#mp-deuda2').val()||0
+  }).eq('id',pd.id);
+  if(e3){alert('Error al guardar: '+e3.message);return;}
+
+  await loadData();
+  $('#modalPrimo').modal('hide');
+  renderPrimos(); renderDashboard();
+});
 
 // =============================================================
 // PRECIOS
@@ -1257,6 +1397,7 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
+
 
 
 
