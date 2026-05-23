@@ -4,10 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Figuritas 2026</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-<text x='-10' y='.9em' font-size='80'>⚽</text>
-</svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='-10' y='.9em' font-size='80'>⚽</text></svg>">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -746,6 +743,7 @@ async function loadData() {
       figCompradas: c.fig_compradas, albComprados: c.alb_comprados,
       costoFig: c.costo_fig, costoAlb: c.costo_alb, estado: c.estado,
       esPrincipal: c.es_principal || false,
+      esReinversion: c.es_reinversion || false,
       inversiones: Object.fromEntries(
         (inv || []).filter(i => i.compra_id === c.id).map(i => [i.primo, i.monto])
       )
@@ -776,7 +774,7 @@ function renderDashboard(){
   const figVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
   const albVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
   const totRec  = ventas.reduce((s,v)=>s+v.total,0);
-  const totCosto= COMPRAS.reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
+  const totCosto= COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
   const ganancia= totRec-totCosto;
   const figRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
   const albRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Album').reduce((s,r)=>s+r.cantidad,0);
@@ -1071,11 +1069,14 @@ function renderStock(){
       <div class="tbl-wrap h-100">
         <div class="tbl-head">
           <h5><i class="fas fa-layer-group text-ac mr-2"></i>${c.nombre} ${bdgComp(c)}</h5>
-          <div class="switch-principal-wrap">
+          <div class="switch-principal-wrap" style="gap:6px;flex-wrap:wrap">
             ${c.esPrincipal
               ? `<span style="font-size:.72rem;color:var(--accent);font-weight:600">★ Compra principal</span>`
               : `<button class="btn-set-principal" data-cid="${c.id}" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 10px;font-size:.72rem;cursor:pointer">Definir como principal</button>`
             }
+            <button class="btn-toggle-reinversion" data-cid="${c.id}" style="background:transparent;border:1px solid ${c.esReinversion?'#f57070':'var(--border)'};color:${c.esReinversion?'#f57070':'var(--muted)'};border-radius:6px;padding:2px 10px;font-size:.72rem;cursor:pointer">
+              ${c.esReinversion?'↺ Reinvertida':'Marcar como reinvertida'}
+            </button>
           </div>
         </div>
         <div class="p-3">
@@ -1108,6 +1109,17 @@ function renderStock(){
       </div>
     </div>`;
   }).join(''));
+
+  $('.btn-toggle-reinversion').off('click').on('click', async function(){
+    const cid = $(this).attr('data-cid');
+    const c = COMPRAS.find(x=>x.id===cid);
+    if(!c) return;
+    const nuevoValor = !c.esReinversion;
+    const {error} = await db.from('compras').update({es_reinversion: nuevoValor}).eq('id', cid);
+    if(error){ alert('Error: '+error.message); return; }
+    await loadData();
+    renderStock(); renderDashboard(); renderPrimos();
+  });
 
   $('.btn-set-principal').off('click').on('click', async function(){
     const cid = $(this).attr('data-cid');
@@ -1157,7 +1169,7 @@ $('#btn-sv-compra').on('click', async function(){
 // PRIMOS
 // =============================================================
 function renderPrimos(){
-  const totCosto=COMPRAS.reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
+  const totCosto=COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
   const totRec  =ventas.reduce((s,v)=>s+v.total,0);
   const ganTotal =totRec-totCosto;
 
@@ -1401,6 +1413,7 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
+
 
 
 
