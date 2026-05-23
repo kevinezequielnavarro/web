@@ -348,6 +348,7 @@
         <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-green"><div class="kpi-lbl">Total reservado</div><div class="kpi-val" id="res-tot">$0</div></div></div>
         <div class="col-md-4 col-6 mb-2"><div class="kpi-card a-blue"><div class="kpi-lbl">Senas cobradas</div><div class="kpi-val" id="res-senia">$0</div></div></div>
       </div>
+      <div id="reservas-tabs" class="mb-3"></div>
       <div id="reservas-stock-info" class="mb-3"></div>
       <div class="tbl-wrap">
         <div class="tbl-head">
@@ -472,6 +473,10 @@
             <select class="form-control" id="r-vendedor"><option>Kevin</option><option>Leonel</option><option>Santino</option></select>
           </div>
         </div>
+        <div class="form-group">
+          <label>Compra</label>
+          <select class="form-control" id="r-compra"></select>
+        </div>
         <div class="form-row">
           <div class="form-group col-6"><label>Producto</label>
             <select class="form-control" id="r-producto"><option>Figurita</option><option>Album</option></select>
@@ -578,6 +583,7 @@ let ventas = [];
 let reservas = [];
 
 let activeCompra = 'C1';
+let activeReservaCompra = 'C1';
 let editVId = null, editRId = null;
 let precioManual = false, precioManualR = false;
 
@@ -641,15 +647,15 @@ function renderVentasStockInfo(){
 }
 
 function renderReservasStockInfo(){
-  const cp = compraPrincipal();
-  if(!cp) return;
-  const f = stockFig(cp.id), a = stockAlb(cp.id);
+  const c = COMPRAS.find(x=>x.id===activeReservaCompra) || compraPrincipal();
+  if(!c) return;
+  const f = stockFig(c.id), a = stockAlb(c.id);
   const figDisp = f.disponibles - f.reservadas;
   const albDisp = a.disponibles - a.reservados;
   $('#reservas-stock-info').html(`<div class="stock-info-strip">
     ${stockChip(figDisp,'Fig. disponibles para reservar','fa-image')}
-    ${cp.albComprados>0 ? stockChip(albDisp,'Álbumes disponibles para reservar','fa-book') : ''}
-    <span class="stock-info-src"><i class="fas fa-star mr-1"></i>${cp.nombre} (principal)</span>
+    ${c.albComprados>0 ? stockChip(albDisp,'Álbumes disponibles para reservar','fa-book') : ''}
+    <span class="stock-info-src"><i class="fas fa-layer-group mr-1"></i>${c.nombre}</span>
   </div>`);
 }
 
@@ -880,15 +886,25 @@ $('#btn-add-venta').on('click',()=>openVentaModal());
 // =============================================================
 // RESERVAS
 // =============================================================
+function renderReservasTabs(){
+  $('#reservas-tabs').html(COMPRAS.map(c=>`
+    <button class="btn-tab ${activeReservaCompra===c.id?'active':''}" data-cid="${c.id}">${c.nombre}</button>`).join(''));
+  $('#reservas-tabs .btn-tab').on('click', function(){
+    activeReservaCompra = $(this).data('cid');
+    renderReservasTabs(); renderReservas();
+  });
+}
+
 function renderReservas(){
   renderReservasStockInfo();
-  const act=reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida');
+  const filtradas = reservas.filter(r => r.compra === activeReservaCompra);
+  const act = filtradas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida');
   $('#res-cnt').text(act.length);
   $('#res-tot').text(fmt(act.reduce((s,r)=>s+r.total,0)));
   $('#res-senia').text(fmt(act.reduce((s,r)=>s+(r.sena||0),0)));
 
-  $('#reservas-body').html(reservas.length
-    ? reservas.map(r=>`<tr class="${r.estado==='Vendida'?'row-vendida':''}">
+  $('#reservas-body').html(filtradas.length
+    ? filtradas.map(r=>`<tr class="${r.estado==='Vendida'?'row-vendida':''}">
         <td>${r.fecha}</td><td class="hide-mobile">${r.vendedor}</td><td class="hide-mobile">${bdgProd(r.producto)}</td>
         <td>${r.comprador}</td>
         <td class="text-right">${fmtN(r.cantidad)}</td>
@@ -917,6 +933,8 @@ function openReservaModal(id=null){
   editRId=id; precioManualR=false;
   const r=id?reservas.find(x=>x.id===id):null;
   $('#mr-title').text(id?'Editar Reserva':'Nueva Reserva');
+  $('#r-compra').html(COMPRAS.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join(''));
+  $('#r-compra').val(r?r.compra:activeReservaCompra);
   $('#r-fecha').val(r?r.fecha:today());
   $('#r-vendedor').val(r?r.vendedor:'Kevin');
   const prod=r?r.producto:'Album';
@@ -947,7 +965,7 @@ $('#btn-sv-reserva').on('click', async function(){
     estado:$('#r-estado').val(), comprador:$('#r-comprador').val(),
     cantidad:+$('#r-cantidad').val()||0, precio:+$('#r-precio').val()||0,
     total:+$('#r-total').val()||0, sena:+$('#r-senia').val()||0,
-    obs:$('#r-obs').val()
+    obs:$('#r-obs').val(), compra:$('#r-compra').val()
   };
   if(!d.comprador||!d.cantidad) return alert('Completa los campos requeridos.');
 
@@ -971,8 +989,9 @@ $('#btn-sv-reserva').on('click', async function(){
   if(editRId){ await db.from('reservas').update(d).eq('id', editRId); }
   else { await db.from('reservas').insert(d); }
   await loadData();
+  activeReservaCompra = d.compra;
   $('#modalReserva').modal('hide');
-  renderReservas(); renderDashboard();
+  renderReservasTabs(); renderReservas(); renderDashboard();
 });
 
 $('#btn-add-reserva').on('click',()=>openReservaModal());
@@ -991,10 +1010,10 @@ function renderStock(){
         <div class="tbl-head">
           <h5><i class="fas fa-layer-group text-ac mr-2"></i>${c.nombre} ${bdgComp(c)}</h5>
           <div class="switch-principal-wrap">
-            <input type="checkbox" id="sp-${c.id}" class="switch-principal" data-cid="${c.id}" ${c.esPrincipal?'checked':''} style="cursor:pointer;accent-color:var(--accent)">
-            <label for="sp-${c.id}" style="font-size:.72rem;color:${c.esPrincipal?'var(--accent)':'var(--muted)'};margin:0;cursor:pointer">
-              ${c.esPrincipal?'★ Compra principal':'Definir como principal'}
-            </label>
+            ${c.esPrincipal
+              ? `<span style="font-size:.72rem;color:var(--accent);font-weight:600">★ Compra principal</span>`
+              : `<button class="btn-set-principal" data-cid="${c.id}" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 10px;font-size:.72rem;cursor:pointer">Definir como principal</button>`
+            }
           </div>
         </div>
         <div class="p-3">
@@ -1028,8 +1047,9 @@ function renderStock(){
     </div>`;
   }).join(''));
 
-  $('.switch-principal').off('change').on('change', async function(){
+  $('.btn-set-principal').off('click').on('click', async function(){
     const cid = $(this).attr('data-cid');
+    $(this).text('Guardando...').prop('disabled', true);
     const updates = COMPRAS.map(c =>
       db.from('compras').update({ es_principal: c.id === cid }).eq('id', c.id)
     );
@@ -1057,16 +1077,18 @@ $('#btn-sv-compra').on('click', async function(){
   let nextNum=COMPRAS.length+1;
   let newId='C'+nextNum;
   while(COMPRAS.find(c=>c.id===newId)){ nextNum++; newId='C'+nextNum; }
-  await db.from('compras').insert({
+  const { error } = await db.from('compras').insert({
     id:newId, nombre, fig_compradas:+$('#c-fig-cant').val()||0,
     alb_comprados:+$('#c-alb-cant').val()||0,
     costo_fig:+$('#c-fig-costo').val()||0,
     costo_alb:+$('#c-alb-costo').val()||0,
     estado:'En curso', es_principal:false
   });
+  if(error){ alert('Error al guardar compra: '+error.message); return; }
   await loadData();
   $('#modalCompra').modal('hide');
   renderStock(); renderDashboard();
+  renderVentasTabs(); renderReservasTabs();
 });
 
 // =============================================================
@@ -1206,7 +1228,7 @@ function goTo(page){
 
   if(page==='dashboard') renderDashboard();
   else if(page==='ventas'){ renderVentasTabs(); renderVentasTable(); }
-  else if(page==='reservas') renderReservas();
+  else if(page==='reservas'){ renderReservasTabs(); renderReservas(); }
   else if(page==='stock') renderStock();
   else if(page==='primos') renderPrimos();
   else if(page==='precios') renderPrecios();
@@ -1229,10 +1251,12 @@ $('#btn-menu').on('click',function(){
 (async () => {
   await loadData();
   activeCompra = compraPrincipal()?.id || COMPRAS[0]?.id || 'C1';
+  activeReservaCompra = activeCompra;
   goTo('dashboard');
 })();
 </script>
 </body>
 </html>
+
 
 
