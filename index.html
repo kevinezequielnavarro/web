@@ -157,6 +157,17 @@
     .stock-chip.sc-warn .sc-val { color:var(--accent); }
     .stock-chip.sc-zero .sc-val { color:var(--danger,#f57070); }
     .stock-info-src { font-size:.7rem; color:var(--muted); align-self:center; }
+    .tbl-filter-bar { padding:8px 16px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+    .tbl-filter-bar input { background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:5px 10px 5px 30px; font-size:.82rem; width:100%; outline:none; }
+    .tbl-filter-bar input:focus { border-color:var(--accent); }
+    .tbl-filter-bar .fi-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:.75rem; pointer-events:none; }
+    .tbl-filter-wrap { position:relative; flex:1; }
+    .tbl-filter-clear { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:.8rem; padding:0 4px; }
+    .tbl-filter-clear:hover { color:var(--text); }
+    th.sortable { cursor:pointer; user-select:none; white-space:nowrap; }
+    th.sortable:hover { color:var(--accent); }
+    th.sortable .sort-icon { display:inline-block; margin-left:4px; opacity:.4; font-size:.7rem; }
+    th.sortable.sort-asc .sort-icon, th.sortable.sort-desc .sort-icon { opacity:1; color:var(--accent); }
     .switch-principal-wrap { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
     .switch-principal-wrap label { font-size:.75rem; color:var(--muted); margin:0; cursor:pointer; }
 
@@ -324,9 +335,16 @@
           <h5><i class="fas fa-list text-ac mr-2"></i>Registro de ventas</h5>
           <button class="btn btn-gold btn-sm" id="btn-add-venta"><i class="fas fa-plus mr-1"></i>Nueva venta</button>
         </div>
+        <div class="tbl-filter-bar">
+          <div class="tbl-filter-wrap">
+            <i class="fas fa-search fi-icon"></i>
+            <input type="text" id="ventas-filter-input" placeholder="Buscar por fecha, vendedor, comprador...">
+          </div>
+          <button class="tbl-filter-clear" id="ventas-filter-clear" title="Limpiar"><i class="fas fa-times"></i></button>
+        </div>
         <div class="tbl-scroll">
           <table class="app-tbl">
-            <thead><tr><th>Fecha</th><th class="hide-mobile">Vendedor</th><th>Producto</th><th>Comprador</th><th class="text-right">Cant.</th><th class="text-right hide-mobile">Precio unit.</th><th class="text-right">Total</th><th class="hide-mobile">Obs.</th><th></th></tr></thead>
+            <thead id="ventas-head"></thead>
             <tbody id="ventas-body"></tbody>
             <tfoot>
               <tr class="totals-row">
@@ -356,9 +374,16 @@
           <h5><i class="fas fa-bookmark text-ac mr-2"></i>Reservas</h5>
           <button class="btn btn-gold btn-sm" id="btn-add-reserva"><i class="fas fa-plus mr-1"></i>Nueva reserva</button>
         </div>
+        <div class="tbl-filter-bar">
+          <div class="tbl-filter-wrap">
+            <i class="fas fa-search fi-icon"></i>
+            <input type="text" id="reservas-filter-input" placeholder="Buscar por fecha, vendedor, comprador, estado...">
+          </div>
+          <button class="tbl-filter-clear" id="reservas-filter-clear" title="Limpiar"><i class="fas fa-times"></i></button>
+        </div>
         <div class="tbl-scroll">
           <table class="app-tbl">
-            <thead><tr><th>Fecha</th><th class="hide-mobile">Vendedor</th><th class="hide-mobile">Producto</th><th>Comprador</th><th class="text-right">Cant.</th><th class="text-right hide-mobile">Precio</th><th class="text-right">Total</th><th class="text-right hide-mobile">Sena</th><th>Estado</th><th class="hide-mobile">Obs.</th><th></th></tr></thead>
+            <thead id="reservas-head"></thead>
             <tbody id="reservas-body"></tbody>
           </table>
         </div>
@@ -637,6 +662,8 @@ let reservas = [];
 let activeCompra = 'C1';
 let activeReservaCompra = 'C1';
 let PRIMO_DATA = {};
+let ventasSortCol = null, ventasSortDir = 1, ventasFilter = '';
+let reservasSortCol = null, reservasSortDir = 1, reservasFilter = '';
 let editVId = null, editRId = null;
 let precioManual = false, precioManualR = false;
 
@@ -661,6 +688,9 @@ const bdgComp  = c => c.estado==='Cerrada'
   : '<span class="bdg bdg-pendiente">En curso</span>';
 
 function ventasByC(cid){ return ventas.filter(v=>v.compra===cid); }
+
+// Ventas de compras NO reinvertidas (para totales globales)
+function ventasActivas(){ return ventas.filter(v=>!COMPRAS.find(c=>c.id===v.compra)?.esReinversion); }
 
 function stockFig(cid){
   const c=COMPRAS.find(x=>x.id===cid);
@@ -773,7 +803,8 @@ function renderDashboard(){
   const cpId    = cp ? cp.id : null;
   const figVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
   const albVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
-  const totRec  = ventas.reduce((s,v)=>s+v.total,0);
+  const vAct    = ventasActivas();
+  const totRec  = vAct.reduce((s,v)=>s+v.total,0);
   const totCosto= COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
   const ganancia= totRec-totCosto;
   const figRes  = reservas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida'&&r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
@@ -828,9 +859,9 @@ function renderDashboard(){
 
   // Primos
   $('#dash-primos-body').html(PRIMOS.map(p=>{
-    const fV=ventas.filter(v=>v.vendedor===p&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
-    const aV=ventas.filter(v=>v.vendedor===p&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
-    const r=ventas.filter(v=>v.vendedor===p).reduce((s,v)=>s+v.total,0);
+    const fV=vAct.filter(v=>v.vendedor===p&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
+    const aV=vAct.filter(v=>v.vendedor===p&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
+    const r=vAct.filter(v=>v.vendedor===p).reduce((s,v)=>s+v.total,0);
     return `<tr><td class="font-weight-bold">${p}</td><td>${fmtN(fV)}</td><td>${fmtN(aV)}</td><td class="text-ac">${fmt(r)}</td></tr>`;
   }).join(''));
 
@@ -864,9 +895,40 @@ function renderVentasTabs(){
   });
 }
 
+const VCOLS=[
+  {key:'fecha',    label:'Fecha',       cls:''},
+  {key:'vendedor', label:'Vendedor',    cls:'hide-mobile'},
+  {key:'producto', label:'Producto',    cls:''},
+  {key:'comprador',label:'Comprador',   cls:''},
+  {key:'cantidad', label:'Cant.',       cls:'text-right'},
+  {key:'precio',   label:'Precio unit.',cls:'text-right hide-mobile'},
+  {key:'total',    label:'Total',       cls:'text-right'},
+  {key:'obs',      label:'Obs.',        cls:'hide-mobile'},
+];
+const VNUM=new Set(['cantidad','precio','total']);
+
+function sortIcon(col,sc,sd){ return `<span class="sort-icon">${sc===col?(sd===1?'↑':'↓'):'↕'}</span>`; }
+
+function applySort(arr,col,dir,numCols){
+  if(!col) return arr;
+  return [...arr].sort((a,b)=>{
+    const av=a[col], bv=b[col];
+    return numCols.has(col)?dir*(av-bv):dir*String(av||'').localeCompare(String(bv||''));
+  });
+}
+
 function renderVentasTable(){
   renderVentasStockInfo();
-  const rows=ventasByC(activeCompra);
+
+  // Thead dinámico
+  $('#ventas-head').html('<tr>'+VCOLS.map(c=>`<th class="sortable ${c.cls}${ventasSortCol===c.key?' sort-'+(ventasSortDir===1?'asc':'desc'):''}" data-col="${c.key}">${c.label}${sortIcon(c.key,ventasSortCol,ventasSortDir)}</th>`).join('')+'<th></th></tr>');
+
+  // Filtro + orden
+  const q=ventasFilter.toLowerCase();
+  let rows=ventasByC(activeCompra);
+  if(q) rows=rows.filter(v=>[v.fecha,v.vendedor,v.producto,v.comprador,v.obs].some(f=>(f||'').toLowerCase().includes(q)));
+  rows=applySort(rows,ventasSortCol,ventasSortDir,VNUM);
+
   $('#ventas-body').html(rows.length
     ? rows.map(v=>`<tr>
         <td>${v.fecha}</td><td class="hide-mobile">${v.vendedor}</td><td>${bdgProd(v.producto)}</td>
@@ -879,12 +941,23 @@ function renderVentasTable(){
           <button class="btn-act ev" data-id="${v.id}" title="Editar"><i class="fas fa-pen"></i></button>
           <button class="btn-act del dv" data-id="${v.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
         </td></tr>`).join('')
-    : '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-shopping-cart"></i><p>Sin ventas registradas para esta compra</p></div></td></tr>');
+    : '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-shopping-cart"></i><p>Sin resultados</p></div></td></tr>');
 
-  const tc=rows.reduce((s,v)=>s+v.cantidad,0);
-  const tm=rows.reduce((s,v)=>s+v.total,0);
-  $('#v-tot-cant').text(fmtN(tc));
-  $('#v-tot-monto').text(fmt(tm));
+  const allRows=ventasByC(activeCompra);
+  $('#v-tot-cant').text(fmtN(allRows.reduce((s,v)=>s+v.cantidad,0)));
+  $('#v-tot-monto').text(fmt(allRows.reduce((s,v)=>s+v.total,0)));
+
+  // Sort click
+  $('#ventas-head th.sortable').off('click').on('click',function(){
+    const col=$(this).attr('data-col');
+    if(ventasSortCol===col){ ventasSortDir===1?ventasSortDir=-1:(ventasSortCol=null,ventasSortDir=1); }
+    else{ ventasSortCol=col; ventasSortDir=1; }
+    renderVentasTable();
+  });
+
+  // Filter input (bind solo si no está ya bindeado)
+  $('#ventas-filter-input').off('input').on('input',function(){ ventasFilter=$(this).val(); renderVentasTable(); }).val(ventasFilter);
+  $('#ventas-filter-clear').off('click').on('click',function(){ ventasFilter=''; $('#ventas-filter-input').val(''); renderVentasTable(); });
 
   $('.ev').on('click',function(){ openEditVenta(+$(this).data('id')); });
   $('.dv').on('click', async function(){
@@ -955,13 +1028,36 @@ function renderReservasTabs(){
   });
 }
 
+const RCOLS=[
+  {key:'fecha',    label:'Fecha',    cls:''},
+  {key:'vendedor', label:'Vendedor', cls:'hide-mobile'},
+  {key:'producto', label:'Producto', cls:'hide-mobile'},
+  {key:'comprador',label:'Comprador',cls:''},
+  {key:'cantidad', label:'Cant.',    cls:'text-right'},
+  {key:'precio',   label:'Precio',   cls:'text-right hide-mobile'},
+  {key:'total',    label:'Total',    cls:'text-right'},
+  {key:'sena',     label:'Seña',     cls:'text-right hide-mobile'},
+  {key:'estado',   label:'Estado',   cls:''},
+  {key:'obs',      label:'Obs.',     cls:'hide-mobile'},
+];
+const RNUM=new Set(['cantidad','precio','total','sena']);
+
 function renderReservas(){
   renderReservasStockInfo();
-  const filtradas = reservas.filter(r => r.compra === activeReservaCompra);
-  const act = filtradas.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida');
+  const base = reservas.filter(r => r.compra === activeReservaCompra);
+  const act = base.filter(r=>r.estado!=='Cancelada'&&r.estado!=='Vendida');
   $('#res-cnt').text(act.length);
   $('#res-tot').text(fmt(act.reduce((s,r)=>s+r.total,0)));
   $('#res-senia').text(fmt(act.reduce((s,r)=>s+(r.sena||0),0)));
+
+  // Thead dinámico
+  $('#reservas-head').html('<tr>'+RCOLS.map(c=>`<th class="sortable ${c.cls}${reservasSortCol===c.key?' sort-'+(reservasSortDir===1?'asc':'desc'):''}" data-col="${c.key}">${c.label}${sortIcon(c.key,reservasSortCol,reservasSortDir)}</th>`).join('')+'<th></th></tr>');
+
+  // Filtro + orden
+  const q=reservasFilter.toLowerCase();
+  let filtradas=base;
+  if(q) filtradas=filtradas.filter(r=>[r.fecha,r.vendedor,r.producto,r.comprador,r.estado,r.obs].some(f=>(f||'').toLowerCase().includes(q)));
+  filtradas=applySort(filtradas,reservasSortCol,reservasSortDir,RNUM);
 
   $('#reservas-body').html(filtradas.length
     ? filtradas.map(r=>`<tr class="${r.estado==='Vendida'?'row-vendida':''}">
@@ -977,7 +1073,19 @@ function renderReservas(){
           <button class="btn-act er" data-id="${r.id}" title="Editar"><i class="fas fa-pen"></i></button>
           <button class="btn-act del dr" data-id="${r.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
         </td></tr>`).join('')
-    : '<tr><td colspan="11"><div class="empty-state"><i class="fas fa-bookmark"></i><p>Sin reservas</p></div></td></tr>');
+    : '<tr><td colspan="11"><div class="empty-state"><i class="fas fa-bookmark"></i><p>Sin resultados</p></div></td></tr>');
+
+  // Sort click
+  $('#reservas-head th.sortable').off('click').on('click',function(){
+    const col=$(this).attr('data-col');
+    if(reservasSortCol===col){ reservasSortDir===1?reservasSortDir=-1:(reservasSortCol=null,reservasSortDir=1); }
+    else{ reservasSortCol=col; reservasSortDir=1; }
+    renderReservas();
+  });
+
+  // Filter input
+  $('#reservas-filter-input').off('input').on('input',function(){ reservasFilter=$(this).val(); renderReservas(); }).val(reservasFilter);
+  $('#reservas-filter-clear').off('click').on('click',function(){ reservasFilter=''; $('#reservas-filter-input').val(''); renderReservas(); });
 
   $('.er').on('click',function(){ openReservaModal(+$(this).data('id')); });
   $('.dr').on('click', async function(){
@@ -1169,9 +1277,10 @@ $('#btn-sv-compra').on('click', async function(){
 // PRIMOS
 // =============================================================
 function renderPrimos(){
-  const totCosto=COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
-  const totRec  =ventas.reduce((s,v)=>s+v.total,0);
-  const ganTotal =totRec-totCosto;
+  const vAct    = ventasActivas();
+  const totCosto= COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
+  const totRec  = vAct.reduce((s,v)=>s+v.total,0);
+  const ganTotal= totRec-totCosto;
 
   $('#primos-row').html(PRIMOS.map(p=>{
     const col=PRIMO_COLORS[p];
@@ -1182,9 +1291,9 @@ function renderPrimos(){
     const ppct=pd.porcentaje!=null?+pd.porcentaje:autoPct;
     const ganEst=ganTotal*(ppct/100);
     const total=inv+ganEst;
-    const figV=ventas.filter(v=>v.vendedor===p&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
-    const albV=ventas.filter(v=>v.vendedor===p&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
-    const rec =ventas.filter(v=>v.vendedor===p).reduce((s,v)=>s+v.total,0);
+    const figV=vAct.filter(v=>v.vendedor===p&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
+    const albV=vAct.filter(v=>v.vendedor===p&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
+    const rec =vAct.filter(v=>v.vendedor===p).reduce((s,v)=>s+v.total,0);
 
     const deudaRows=[];
     if(pd.deudor1&&pd.deuda1>0) deudaRows.push(`<div class="d-flex justify-content-between mb-1">
@@ -1413,6 +1522,7 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
+
 
 
 
