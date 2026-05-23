@@ -7,6 +7,11 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase
+    const db = createClient('https://kzcwttwsfiogotxtqaox.supabase.co', 'sb_publishable_4C3e_jfcIfP2PupOWOb0hw_CMvQlgcu')
+  </script>
   <style>
     :root {
       --bg-dark:    #0d1b2a;
@@ -398,15 +403,15 @@
 // DATOS INICIALES (importados del Excel)
 // =============================================================
 
-const PRIMOS = ['Kevin','Leonel','Santino'];
+let PRIMOS = ['Kevin','Leonel','Santino'];
 
-const PRIMO_COLORS = {
+let PRIMO_COLORS = {
   Kevin:   { bg:'#1a3a6e', fg:'#5b9cf6' },
   Leonel:  { bg:'#1a5c2a', fg:'#4cd97b' },
   Santino: { bg:'#5c1a1a', fg:'#f57070' }
 };
 
-const COMPRAS = [
+let COMPRAS = [
   {
     id:'C1', nombre:'Compra 1',
     figCompradas:500, albComprados:0,
@@ -423,7 +428,7 @@ const COMPRAS = [
   }
 ];
 
-const PRECIOS_FIG = [
+let PRECIOS_FIG = [
   {cantidad:1,  precio:2000},
   {cantidad:50, precio:1900},
   {cantidad:100,precio:1800},
@@ -431,59 +436,17 @@ const PRECIOS_FIG = [
   {cantidad:500,precio:1700}
 ];
 
-const PRECIOS_ALB = [
+let PRECIOS_ALB = [
   {cantidad:1, precio:14000},
   {cantidad:10,precio:12500},
   {cantidad:20,precio:11750},
   {cantidad:30,precio:11000}
 ];
 
-let ventas = [
-  {id:1, fecha:'2026-05-20',vendedor:'Leonel', producto:'Figurita',comprador:'Random',        cantidad:250,precioUnit:1700,total:425000,obs:'',      compra:'C1'},
-  {id:2, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Nico',           cantidad:2,  precioUnit:2000,total:4000,  obs:'',      compra:'C1'},
-  {id:3, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Pedro',          cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:4, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Felipe',         cantidad:2,  precioUnit:2000,total:4000,  obs:'',      compra:'C1'},
-  {id:5, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Gena',           cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:6, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Tala',           cantidad:5,  precioUnit:2000,total:10000, obs:'',      compra:'C1'},
-  {id:7, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Caro',           cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:8, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Sole',           cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:9, fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Donaro',         cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:10,fecha:'2026-05-20',vendedor:'Leonel', producto:'Figurita',comprador:'Feli R',         cantidad:15, precioUnit:2000,total:30000, obs:'Efectivo',compra:'C1'},
-  {id:11,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Male',           cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:12,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Manu',           cantidad:2,  precioUnit:2000,total:4000,  obs:'',      compra:'C1'},
-  {id:13,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Caro',           cantidad:5,  precioUnit:2000,total:10000, obs:'',      compra:'C1'},
-  {id:14,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Tala',           cantidad:4,  precioUnit:2000,total:8000,  obs:'',      compra:'C1'},
-  {id:15,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Mati',           cantidad:5,  precioUnit:2000,total:10000, obs:'',      compra:'C1'},
-  {id:16,fecha:'2026-05-20',vendedor:'Leonel', producto:'Figurita',comprador:'Mauro',          cantidad:50, precioUnit:1900,total:95000, obs:'',      compra:'C1'},
-  {id:17,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Ivana',          cantidad:10, precioUnit:2000,total:20000, obs:'',      compra:'C1'},
-  {id:18,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Random',         cantidad:2,  precioUnit:2000,total:4000,  obs:'',      compra:'C1'},
-  {id:19,fecha:'2026-05-20',vendedor:'Leonel', producto:'Figurita',comprador:'Beto',           cantidad:100,precioUnit:1800,total:180000,obs:'',      compra:'C1'},
-  {id:20,fecha:'2026-05-20',vendedor:'Leonel', producto:'Figurita',comprador:'Tomy',           cantidad:10, precioUnit:2000,total:20000, obs:'',      compra:'C1'},
-  {id:21,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Otro A',         cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:22,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Otro B',         cantidad:2,  precioUnit:2000,total:4000,  obs:'',      compra:'C1'},
-  {id:23,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Random',         cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-  {id:24,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Otro C',         cantidad:10, precioUnit:2000,total:20000, obs:'',      compra:'C1'},
-  {id:25,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Otro D',         cantidad:4,  precioUnit:2000,total:8000,  obs:'',      compra:'C1'},
-  {id:26,fecha:'2026-05-21',vendedor:'Santino',producto:'Figurita',comprador:'Manu',           cantidad:2,  precioUnit:2000,total:4000,  obs:'',      compra:'C1'},
-  {id:27,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Caro',           cantidad:5,  precioUnit:2000,total:10000, obs:'',      compra:'C1'},
-  {id:28,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Nico',           cantidad:3,  precioUnit:1933,total:5799,  obs:'',      compra:'C1'},
-  {id:29,fecha:'2026-05-20',vendedor:'Santino',producto:'Figurita',comprador:'Nico',           cantidad:1,  precioUnit:2000,total:2000,  obs:'',      compra:'C1'},
-];
+let ventas = [];
 
-let reservas = [
-  {id:1, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Ibarra',         cantidad:1,  precio:14000,total:14000, senia:7000,  estado:'Confirmada',obs:''},
-  {id:2, fecha:'2026-05-21',vendedor:'Kevin', producto:'Figurita',comprador:'Mauro Rios',      cantidad:500,precio:1700, total:850000,senia:0,     estado:'Confirmada',obs:''},
-  {id:3, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'(Varios)',        cantidad:10, precio:12500,total:125000,senia:0,     estado:'Confirmada',obs:''},
-  {id:4, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Madrina',         cantidad:30, precio:10500,total:315000,senia:158000,estado:'Confirmada',obs:''},
-  {id:5, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Thiago Emi',      cantidad:2,  precio:14000,total:28000, senia:0,     estado:'Pendiente', obs:''},
-  {id:6, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Leo',             cantidad:1,  precio:14000,total:14000, senia:0,     estado:'Pendiente', obs:''},
-  {id:7, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Tomas colegio',   cantidad:1,  precio:14000,total:14000, senia:0,     estado:'Pendiente', obs:''},
-  {id:8, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Santy tapa dura', cantidad:1,  precio:14000,total:14000, senia:0,     estado:'Pendiente', obs:''},
-  {id:9, fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Alan barrio',     cantidad:1,  precio:14000,total:14000, senia:0,     estado:'Pendiente', obs:''},
-  {id:10,fecha:'2026-05-21',vendedor:'Leonel',producto:'Album',   comprador:'Ian',             cantidad:1,  precio:14000,total:14000, senia:0,     estado:'Pendiente', obs:''},
-];
+let reservas = [];
 
-let nextVId = 30, nextRId = 11;
 let activeCompra = 'C1';
 let editVId = null, editRId = null;
 
@@ -524,6 +487,44 @@ function stockAlb(cid){
 }
 
 function pct(v,t){ return t?Math.min(100,Math.max(0,Math.round(v/t*100))):0; }
+
+// =============================================================
+// CARGA DE DATOS DESDE SUPABASE
+// =============================================================
+async function loadData() {
+  const [
+    { data: v }, { data: r },
+    { data: comp }, { data: inv },
+    { data: prim }, { data: prec }
+  ] = await Promise.all([
+    db.from('ventas').select('*').order('id'),
+    db.from('reservas').select('*').order('id'),
+    db.from('compras').select('*').order('id'),
+    db.from('inversiones').select('*').order('compra_id'),
+    db.from('primos').select('*').order('id'),
+    db.from('precios').select('*').order('tipo').order('cantidad_min')
+  ]);
+  ventas   = v    || [];
+  reservas = r    || [];
+  if (comp && comp.length) {
+    COMPRAS = comp.map(c => ({
+      id: c.id, nombre: c.nombre,
+      figCompradas: c.fig_compradas, albComprados: c.alb_comprados,
+      costoFig: c.costo_fig, costoAlb: c.costo_alb, estado: c.estado,
+      inversiones: Object.fromEntries(
+        (inv || []).filter(i => i.compra_id === c.id).map(i => [i.primo, i.monto])
+      )
+    }));
+  }
+  if (prim && prim.length) {
+    PRIMOS       = prim.map(p => p.nombre);
+    PRIMO_COLORS = Object.fromEntries(prim.map(p => [p.nombre, { bg: p.color_bg, fg: p.color_fg }]));
+  }
+  if (prec && prec.length) {
+    PRECIOS_FIG = prec.filter(p => p.tipo === 'figurita').map(p => ({ cantidad: p.cantidad_min, precio: p.precio }));
+    PRECIOS_ALB = prec.filter(p => p.tipo === 'album').map(p => ({ cantidad: p.cantidad_min, precio: p.precio }));
+  }
+}
 
 // =============================================================
 // DASHBOARD
@@ -612,7 +613,7 @@ function renderVentasTable(){
         <td>${v.fecha}</td><td>${v.vendedor}</td><td>${bdgProd(v.producto)}</td>
         <td>${v.comprador}</td>
         <td class="text-right">${fmtN(v.cantidad)}</td>
-        <td class="text-right">${fmt(v.precioUnit)}</td>
+        <td class="text-right">${fmt(v.precio)}</td>
         <td class="text-right text-ac">${fmt(v.total)}</td>
         <td class="text-muted" style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.obs||''}</td>
         <td>
@@ -627,8 +628,12 @@ function renderVentasTable(){
   $('#v-tot-monto').text(fmt(tm));
 
   $('.ev').on('click',function(){ openEditVenta(+$(this).data('id')); });
-  $('.dv').on('click',function(){
-    if(confirm('Eliminar esta venta?')){ ventas=ventas.filter(v=>v.id!==+$(this).data('id')); renderVentasTable(); renderDashboard(); }
+  $('.dv').on('click', async function(){
+    if(confirm('Eliminar esta venta?')){
+      await db.from('ventas').delete().eq('id', +$(this).data('id'));
+      await loadData();
+      renderVentasTable(); renderDashboard();
+    }
   });
 }
 
@@ -642,7 +647,7 @@ function openVentaModal(id=null){
   $('#v-compra').val(v?v.compra:activeCompra);
   $('#v-comprador').val(v?v.comprador:'');
   $('#v-cantidad').val(v?v.cantidad:1);
-  $('#v-precio').val(v?v.precioUnit:2000);
+  $('#v-precio').val(v?v.precio:2000);
   $('#v-total').val(v?v.total:(1*2000));
   $('#v-obs').val(v?v.obs:'');
   $('#modalVenta').modal('show');
@@ -651,16 +656,17 @@ const openEditVenta=id=>openVentaModal(id);
 
 $('#v-cantidad,#v-precio').on('input',()=>$('#v-total').val((+$('#v-cantidad').val()||0)*(+$('#v-precio').val()||0)));
 
-$('#btn-sv-venta').on('click',function(){
+$('#btn-sv-venta').on('click', async function(){
   const d={
     fecha:$('#v-fecha').val(), vendedor:$('#v-vendedor').val(), producto:$('#v-producto').val(),
     comprador:$('#v-comprador').val(), cantidad:+$('#v-cantidad').val()||0,
-    precioUnit:+$('#v-precio').val()||0, total:+$('#v-total').val()||0,
+    precio:+$('#v-precio').val()||0, total:+$('#v-total').val()||0,
     obs:$('#v-obs').val(), compra:$('#v-compra').val()
   };
   if(!d.comprador||!d.cantidad) return alert('Completa los campos requeridos.');
-  if(editVId){ const i=ventas.findIndex(x=>x.id===editVId); ventas[i]={...ventas[i],...d}; }
-  else ventas.push({id:nextVId++,...d});
+  if(editVId){ await db.from('ventas').update(d).eq('id', editVId); }
+  else { await db.from('ventas').insert(d); }
+  await loadData();
   $('#modalVenta').modal('hide');
   activeCompra=d.compra; renderVentasTabs(); renderVentasTable(); renderDashboard();
 });
@@ -674,7 +680,7 @@ function renderReservas(){
   const act=reservas.filter(r=>r.estado!=='Cancelada');
   $('#res-cnt').text(act.length);
   $('#res-tot').text(fmt(act.reduce((s,r)=>s+r.total,0)));
-  $('#res-senia').text(fmt(act.reduce((s,r)=>s+(r.senia||0),0)));
+  $('#res-senia').text(fmt(act.reduce((s,r)=>s+(r.sena||0),0)));
 
   $('#reservas-body').html(reservas.length
     ? reservas.map(r=>`<tr>
@@ -683,7 +689,7 @@ function renderReservas(){
         <td class="text-right">${fmtN(r.cantidad)}</td>
         <td class="text-right">${fmt(r.precio)}</td>
         <td class="text-right text-ac">${fmt(r.total)}</td>
-        <td class="text-right">${r.senia>0?fmt(r.senia):'<span class="text-muted">—</span>'}</td>
+        <td class="text-right">${r.sena>0?fmt(r.sena):'<span class="text-muted">—</span>'}</td>
         <td>${bdgEst(r.estado)}</td>
         <td class="text-muted" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||''}</td>
         <td>
@@ -693,8 +699,12 @@ function renderReservas(){
     : '<tr><td colspan="11"><div class="empty-state"><i class="fas fa-bookmark"></i><p>Sin reservas</p></div></td></tr>');
 
   $('.er').on('click',function(){ openReservaModal(+$(this).data('id')); });
-  $('.dr').on('click',function(){
-    if(confirm('Eliminar esta reserva?')){ reservas=reservas.filter(r=>r.id!==+$(this).data('id')); renderReservas(); renderDashboard(); }
+  $('.dr').on('click', async function(){
+    if(confirm('Eliminar esta reserva?')){
+      await db.from('reservas').delete().eq('id', +$(this).data('id'));
+      await loadData();
+      renderReservas(); renderDashboard();
+    }
   });
 }
 
@@ -709,7 +719,7 @@ function openReservaModal(id=null){
   $('#r-comprador').val(r?r.comprador:'');
   $('#r-cantidad').val(r?r.cantidad:1);
   $('#r-precio').val(r?r.precio:14000);
-  $('#r-senia').val(r?r.senia:0);
+  $('#r-senia').val(r?r.sena:0);
   $('#r-total').val(r?r.total:(1*14000));
   $('#r-obs').val(r?r.obs:'');
   $('#modalReserva').modal('show');
@@ -717,17 +727,18 @@ function openReservaModal(id=null){
 
 $('#r-cantidad,#r-precio').on('input',()=>$('#r-total').val((+$('#r-cantidad').val()||0)*(+$('#r-precio').val()||0)));
 
-$('#btn-sv-reserva').on('click',function(){
+$('#btn-sv-reserva').on('click', async function(){
   const d={
     fecha:$('#r-fecha').val(), vendedor:$('#r-vendedor').val(), producto:$('#r-producto').val(),
     estado:$('#r-estado').val(), comprador:$('#r-comprador').val(),
     cantidad:+$('#r-cantidad').val()||0, precio:+$('#r-precio').val()||0,
-    total:+$('#r-total').val()||0, senia:+$('#r-senia').val()||0,
+    total:+$('#r-total').val()||0, sena:+$('#r-senia').val()||0,
     obs:$('#r-obs').val()
   };
   if(!d.comprador||!d.cantidad) return alert('Completa los campos requeridos.');
-  if(editRId){ const i=reservas.findIndex(x=>x.id===editRId); reservas[i]={...reservas[i],...d}; }
-  else reservas.push({id:nextRId++,...d});
+  if(editRId){ await db.from('reservas').update(d).eq('id', editRId); }
+  else { await db.from('reservas').insert(d); }
+  await loadData();
   $('#modalReserva').modal('hide');
   renderReservas(); renderDashboard();
 });
@@ -882,7 +893,11 @@ function goTo(page){
 $('.nav-item').on('click',function(){ goTo($(this).data('page')); });
 
 // Init
-goTo('dashboard');
+(async () => {
+  await loadData();
+  goTo('dashboard');
+})();
 </script>
 </body>
 </html>
+
