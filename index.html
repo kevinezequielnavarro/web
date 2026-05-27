@@ -328,6 +328,23 @@
           </div>
         </div>
       </div>
+      <div class="row">
+        <div class="col-12 mb-4">
+          <div class="tbl-wrap">
+            <div class="tbl-head">
+              <h5><i class="fas fa-exclamation-triangle text-ac mr-2"></i>Pérdidas</h5>
+              <button class="btn btn-sm" id="btn-add-perdida" style="background:rgba(245,112,112,.15);color:#f57070;border:1px solid rgba(245,112,112,.3)"><i class="fas fa-plus mr-1"></i>Agregar pérdida</button>
+            </div>
+            <div class="tbl-scroll">
+              <table class="app-tbl">
+                <thead><tr><th>Fecha</th><th>Descripción</th><th class="text-right">Monto</th><th></th></tr></thead>
+                <tbody id="dash-perd-body"></tbody>
+                <tfoot><tr class="totals-row"><td colspan="2">TOTAL PÉRDIDAS</td><td class="text-right" id="dash-perd-tot">$0</td><td></td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- VENTAS -->
@@ -561,6 +578,29 @@
   </div>
 </div>
 
+<!-- ===== MODAL PERDIDA ===== -->
+<div class="modal fade" id="modalPerdida" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mperd-title">Nueva pérdida</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label>Descripción</label><input type="text" class="form-control" id="perd-desc" placeholder="Ej: figuritas mojadas, error de precio..."></div>
+        <div class="form-row">
+          <div class="form-group col-6"><label>Fecha</label><input type="date" class="form-control" id="perd-fecha"></div>
+          <div class="form-group col-6"><label>Monto ($)</label><input type="number" class="form-control" id="perd-monto" min="0" placeholder="0"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-out" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-gold" id="btn-sv-perdida"><i class="fas fa-check mr-1"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL PRIMO ===== -->
 <div class="modal fade" id="modalPrimo" tabindex="-1">
   <div class="modal-dialog">
@@ -662,6 +702,9 @@ let PRECIOS_ALB = [
 let ventas = [];
 
 let reservas = [];
+
+let perdidas = [];
+let editPId = null;
 
 let activeCompra = 'C1';
 let activeReservaCompra = 'C1';
@@ -767,17 +810,20 @@ async function loadData() {
   const [
     { data: v }, { data: r },
     { data: comp }, { data: inv },
-    { data: prim }, { data: prec }
+    { data: prim }, { data: prec },
+    { data: perd }
   ] = await Promise.all([
     db.from('ventas').select('*').order('id'),
     db.from('reservas').select('*').order('id'),
     db.from('compras').select('*').order('id'),
     db.from('inversiones').select('*').order('compra_id'),
     db.from('primos').select('*').order('id'),
-    db.from('precios').select('*').order('tipo').order('cantidad_min')
+    db.from('precios').select('*').order('tipo').order('cantidad_min'),
+    db.from('perdidas').select('*').order('id')
   ]);
   ventas   = v    || [];
   reservas = r    || [];
+  perdidas = perd || [];
   if (comp && comp.length) {
     COMPRAS = comp.map(c => ({
       id: c.id, nombre: c.nombre,
@@ -814,10 +860,12 @@ function renderDashboard(){
   const cpId    = cp ? cp.id : null;
   const figVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Figurita').reduce((s,v)=>s+v.cantidad,0);
   const albVP   = ventas.filter(v=>v.compra===cpId&&v.producto==='Album').reduce((s,v)=>s+v.cantidad,0);
-  const vAct    = ventasActivas();
-  const totRec  = vAct.reduce((s,v)=>s+v.total,0);
-  const totCosto= COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
-  const ganancia= totRec-totCosto;
+  const vAct      = ventasActivas();
+  const totRec    = vAct.reduce((s,v)=>s+v.total,0);
+  const totCosto  = COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
+  const totPerd   = perdidas.reduce((s,p)=>s+p.monto,0);
+  const ganBruta  = totRec-totCosto;
+  const ganancia  = ganBruta-totPerd;
   const figRes  = reservas.filter(r=>r.estado==='Confirmada'&&r.producto==='Figurita').reduce((s,r)=>s+r.cantidad,0);
   const albRes  = reservas.filter(r=>r.estado==='Confirmada'&&r.producto==='Album').reduce((s,r)=>s+r.cantidad,0);
   const conf    = reservas.filter(r=>r.estado==='Confirmada').length;
@@ -826,8 +874,10 @@ function renderDashboard(){
   const kpis=[
     {l:`Fig. vendidas (${cp?cp.nombre:'—'})`, v:fmtN(figVP), s:`de ${fmtN(cp?cp.figCompradas:0)} compradas`, cls:'a-blue',  ico:'fa-image'},
     {l:`Alb. vendidos (${cp?cp.nombre:'—'})`, v:fmtN(albVP), s:`de ${fmtN(cp?cp.albComprados:0)} comprados`, cls:'a-blue',  ico:'fa-book'},
-    {l:'Total recaudado',  v:fmt(totRec),   s:`Costo: ${fmt(totCosto)}`,          cls:'a-green', ico:'fa-dollar-sign'},
-    {l:'Ganancia bruta',   v:fmt(ganancia), s:ganancia>=0?'En positivo':'Aún en negativo', cls:ganancia>=0?'a-green':'a-red', ico:'fa-chart-line'},
+    {l:'Total recaudado',  v:fmt(totRec),    s:`Costo: ${fmt(totCosto)}`,                      cls:'a-green', ico:'fa-dollar-sign'},
+    {l:'Ganancia bruta',  v:fmt(ganBruta),  s:`Antes de pérdidas`,                            cls:'a-green', ico:'fa-chart-line'},
+    {l:'Pérdidas',        v:fmt(totPerd),   s:`${perdidas.length} registro${perdidas.length!==1?'s':''}`, cls:'a-red',   ico:'fa-exclamation-triangle'},
+    {l:'Ganancia neta',   v:fmt(ganancia),  s:ganancia>=0?'En positivo':'Aún en negativo',    cls:ganancia>=0?'a-green':'a-red', ico:'fa-trophy'},
   ];
 
   $('#kpi-row').html(kpis.map(k=>`
@@ -897,7 +947,60 @@ function renderDashboard(){
       <td class="${g>=0?'text-g':'text-r'}">${fmt(g)}</td>
       <td>${bdgComp(c)}</td></tr>`;
   }).join(''));
+
+  // Pérdidas
+  $('#dash-perd-body').html(perdidas.length
+    ? perdidas.map(p=>`<tr>
+        <td style="color:var(--muted);font-size:.82rem">${p.fecha||'—'}</td>
+        <td>${p.descripcion}</td>
+        <td class="text-right" style="color:#f57070;font-weight:600">${fmt(p.monto)}</td>
+        <td>
+          <button class="btn-act ep" data-id="${p.id}" title="Editar"><i class="fas fa-pen"></i></button>
+          <button class="btn-act del dp" data-id="${p.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
+        </td></tr>`).join('')
+    : '<tr><td colspan="4"><div class="empty-state" style="padding:12px"><i class="fas fa-check-circle" style="color:var(--success)"></i><p>Sin pérdidas registradas</p></div></td></tr>');
+  $('#dash-perd-tot').text(fmt(totPerd));
+
+  $('#btn-add-perdida').off('click').on('click',()=>openPerdidaModal());
+  $('.ep').on('click',function(){ openPerdidaModal(+$(this).data('id')); });
+  $('.dp').on('click',function(){
+    if(!confirm('Eliminar esta pérdida?')) return;
+    btnGuardar($(this), async()=>{
+      await db.from('perdidas').delete().eq('id',+$(this).data('id'));
+      await loadData(); renderDashboard(); renderPrimos();
+    });
+  });
 }
+
+// =============================================================
+// PÉRDIDAS
+// =============================================================
+function openPerdidaModal(id=null){
+  editPId=id;
+  const p=id?perdidas.find(x=>x.id===id):null;
+  $('#mperd-title').text(id?'Editar pérdida':'Nueva pérdida');
+  $('#perd-fecha').val(p?p.fecha:today());
+  $('#perd-desc').val(p?p.descripcion:'');
+  $('#perd-monto').val(p?p.monto:0);
+  $('#modalPerdida').modal('show');
+}
+
+$('#btn-sv-perdida').on('click', function(){
+  const d={
+    fecha:$('#perd-fecha').val(),
+    descripcion:$('#perd-desc').val().trim(),
+    monto:+$('#perd-monto').val()||0
+  };
+  if(!d.descripcion) return alert('Ingresá una descripción.');
+  if(!d.monto) return alert('Ingresá un monto mayor a 0.');
+  btnGuardar($(this), async()=>{
+    if(editPId){ await db.from('perdidas').update(d).eq('id',editPId); }
+    else { await db.from('perdidas').insert(d); }
+    await loadData();
+    $('#modalPerdida').modal('hide');
+    renderDashboard(); renderPrimos();
+  });
+});
 
 // =============================================================
 // VENTAS
@@ -1549,6 +1652,7 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
+
 
 
 
