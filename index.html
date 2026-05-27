@@ -1409,7 +1409,8 @@ function renderPrimos(){
   const vAct    = ventasActivas();
   const totCosto= COMPRAS.filter(c=>!c.esReinversion).reduce((s,c)=>s+c.figCompradas*c.costoFig+c.albComprados*c.costoAlb,0);
   const totRec  = vAct.reduce((s,v)=>s+v.total,0);
-  const ganTotal= totRec-totCosto;
+  const totPerd = perdidas.reduce((s,p)=>s+p.monto,0);
+  const ganTotal= totRec-totCosto-totPerd;
 
   $('#primos-row').html(PRIMOS.map(p=>{
     const col=PRIMO_COLORS[p];
@@ -1652,6 +1653,7 @@ $('#btn-menu').on('click',function(){
 </script>
 </body>
 </html>
+
 
 
 
